@@ -290,8 +290,8 @@ string y_rotation(const string& combination) {
     cycle(combination_new[6], combination_new[18], combination_new[14], combination_new[10]);
     // Cycle 7 -> 19 -> 15 -> 11 -> 7
     cycle(combination_new[7], combination_new[19], combination_new[15], combination_new[11]);
-    // Cycle 20 -> 21 -> 22 -> 23 -> 24
-    cycle(combination_new[20], combination_new[21], combination_new[22], combination_new[23]);
+    // Cycle 20 -> 23 -> 22 -> 21 -> 20
+    cycle(combination_new[20], combination_new[23], combination_new[22], combination_new[21]);
     return combination_new;
 
 }
@@ -614,8 +614,12 @@ string d2(const string& combination) {
 }
 
 string d3(const string& combination) {
+    cout << combination << endl;
     string combination_new = u3(combination);
-    return y_rotation(combination_new);           
+    cout << combination_new << endl;
+    string output = y_rotation(combination_new); 
+    cout << output << endl;
+    return output;           
 }
 
 
@@ -937,7 +941,7 @@ int main() {
     //generateCombinations(length, validCombinations, counter, forbiddenSequences);
 
     // Write valid combinations to file
-    ofstream outputFile("prune.txt");
+    //ofstream outputFile("prune.txt");
 
     //for (const string& combination : validCombinations) {
     //    outputFile << combination << endl;
@@ -965,6 +969,16 @@ int main() {
     };
     //string initial_state = "012345678901234567890123";  // Solved cube state
     string initial_state = "aaaabbbbccccbbbbccccaaaa";  // HTR-solved cube state
+    // Lets go through  Fw Rw2 Fw' Dw' Lw'
+    //cout << "Initial state: " << initial_state << endl;
+    //cout << d3(initial_state) << endl;
+    //cout << f(initial_state) << endl;
+    //cout << r2(f(initial_state)) << endl;
+    //cout << f3(r2(f(initial_state))) << endl;
+    //cout << d3(f3(r2(f(initial_state)))) << endl;
+    //cout << l3(d3(f3(r2(f(initial_state))))) << endl;
+    //cout << "Final state: " << fixLetterOrder(l3(d3(f3(r2(f(initial_state)))))) << endl;
+//
     generate_five_move_scrambles_unique_states(moves, initial_state, "all_five_move_scrambles_unique_states_buffer.txt");
 
     // Stop the timer
