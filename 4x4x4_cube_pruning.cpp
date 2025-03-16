@@ -414,6 +414,95 @@ string e_mirror(const string& combination) {
 
 }
 
+string M_mirror_solver(const string& move_sequence) {
+    unordered_map<string, string> mirror_map = {
+        {"R", "L'"}, {"R'", "L"}, {"R2", "L2"},
+        {"L", "R'"}, {"L'", "R"}, {"L2", "R2"},
+        {"U", "U'"}, {"U'", "U"}, {"U2", "U2"},
+        {"D", "D'"}, {"D'", "D"}, {"D2", "D2"},
+        {"F", "F'"}, {"F'", "F"}, {"F2", "F2"},
+        {"B", "B'"}, {"B'", "B"}, {"B2", "B2"},
+        {"Uw", "Uw'"}, {"Uw'", "Uw"}, {"Uw2", "Uw2"},
+        {"Dw", "Dw'"}, {"Dw'", "Dw"}, {"Dw2", "Dw2"},
+        {"Rw", "Lw'"}, {"Rw'", "Lw"}, {"Rw2", "Lw2"},
+        {"Lw", "Rw'"}, {"Lw'", "Rw"}, {"Lw2", "Rw2"},
+        {"Fw", "Fw'"}, {"Fw'", "Fw"}, {"Fw2", "Fw2"},
+        {"Bw", "Bw'"}, {"Bw'", "Bw"}, {"Bw2", "Bw2"}
+    };
+
+    stringstream ss(move_sequence);
+    string move, mirrored_sequence = "";
+    
+    while (ss >> move) {
+        if (mirror_map.find(move) != mirror_map.end()) {
+            mirrored_sequence += mirror_map[move] + " ";
+        } else {
+            mirrored_sequence += move + " ";  // If no mapping exists, keep the move unchanged
+        }
+    }
+
+    return mirrored_sequence.substr(0, mirrored_sequence.size() - 1); // Remove trailing space
+}
+
+string S_mirror_solver(const string& move_sequence) {
+    unordered_map<string, string> mirror_map = {
+        {"R", "R'"}, {"R'", "R"}, {"F2", "B2"},
+        {"F", "B'"}, {"F'", "B"}, {"L2", "L2"},
+        {"L", "L'"}, {"L'", "L"}, {"R2", "R2"},
+        {"D", "D'"}, {"D'", "D"}, {"D2", "D2"},
+        {"U", "U'"}, {"U'", "U"}, {"U2", "U2"},
+        {"B", "F'"}, {"B'", "F"}, {"B2", "F2"},
+        {"Uw", "Uw'"}, {"Uw'", "Uw"}, {"Uw2", "Uw2"},
+        {"Dw", "Dw'"}, {"Dw'", "Dw"}, {"Dw2", "Dw2"},
+        {"Rw", "Rw'"}, {"Rw'", "Rw"}, {"Rw2", "Rw2"},
+        {"Lw", "Lw'"}, {"Lw'", "Lw"}, {"Lw2", "Lw2"},
+        {"Fw", "Bw'"}, {"Fw'", "Bw"}, {"Fw2", "Bw2"},
+        {"Bw", "Fw'"}, {"Bw'", "Fw"}, {"Bw2", "Fw2"}
+
+    };
+
+    stringstream ss(move_sequence);
+    string move, mirrored_sequence = "";
+    
+    while (ss >> move) {
+        if (mirror_map.find(move) != mirror_map.end()) {
+            mirrored_sequence += mirror_map[move] + " ";
+        } else {
+            mirrored_sequence += move + " ";  // If no mapping exists, keep the move unchanged
+        }
+    }
+
+    return mirrored_sequence.substr(0, mirrored_sequence.size() - 1); // Remove trailing space
+}
+/*
+string E_mirror_solver(const string& move_sequence) {
+    unordered_map<string, string> mirror_map = {
+        {"R", "L'"}, {"R'", "L"}, {"R2", "L2"},
+        {"L", "R'"}, {"L'", "R"}, {"L2", "R2"},
+        {"U", "U'"}, {"U'", "U"}, {"U2", "U2"},
+        {"D", "D'"}, {"D'", "D"}, {"D2", "D2"},
+        {"F", "F'"}, {"F'", "F"}, {"F2", "F2"},
+        {"B", "B'"}, {"B'", "B"}, {"B2", "B2"},
+        {"Uw", "Uw'"}, {"Uw'", "Uw"}, {"Uw2", "Uw2"},
+        {"Dw", "Dw'"}, {"Dw'", "Dw"}, {"Dw2", "Dw2"},
+        {"Rw", "Lw'"}, {"Rw'", "Lw"}, {"Rw2", "Lw2"},
+        {"Lw", "Rw'"}, {"Lw'", "Rw"}, {"Lw2", "Rw2"}
+    };
+
+    stringstream ss(move_sequence);
+    string move, mirrored_sequence = "";
+    
+    while (ss >> move) {
+        if (mirror_map.find(move) != mirror_map.end()) {
+            mirrored_sequence += mirror_map[move] + " ";
+        } else {
+            mirrored_sequence += move + " ";  // If no mapping exists, keep the move unchanged
+        }
+    }
+
+    return mirrored_sequence.substr(0, mirrored_sequence.size() - 1); // Remove trailing space
+}*/
+
 string R(const string& combination) {
     string combination_new = combination;
     // Cycle 12 -> 13 -> 14 -> 15 -> 12
@@ -614,11 +703,8 @@ string d2(const string& combination) {
 }
 
 string d3(const string& combination) {
-    cout << combination << endl;
     string combination_new = u3(combination);
-    cout << combination_new << endl;
     string output = y_rotation(combination_new); 
-    cout << output << endl;
     return output;           
 }
 
