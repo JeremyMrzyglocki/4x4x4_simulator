@@ -624,50 +624,6 @@ string d3(const string& combination) {
 }
 
 
-
-// Function to generate all 2-move scrambles and save the resulting cube states
-
-/*
-void generate_two_move_scrambles(const vector<string>& moves, const string& initial_state, const string& filename) {
-    ofstream outputFile(filename);
-    if (!outputFile) {
-        cerr << "Error: Could not open file " << filename << " for writing." << endl;
-        return;
-    }
-
-    for (const string& move1 : moves) {
-        for (const string& move2 : moves) {
-            string scramble = move1 + " " + move2;
-            string cube_state = translate_scramble_to_moves(scramble);
-            outputFile << scramble << " : " << cube_state << endl;
-        }
-    }
-    outputFile.close();
-    cout << "Scramble results saved to " << filename << endl;
-}
-
-void generate_four_move_scrambles(const vector<string>& moves, const string& initial_state, const string& filename) {
-    ofstream outputFile(filename);
-    if (!outputFile) {
-        cerr << "Error: Could not open file " << filename << " for writing." << endl;
-        return;
-    }
-
-    for (const string& move1 : moves) {
-        for (const string& move2 : moves) {
-            for (const string& move3 : moves) {
-                for (const string& move4 : moves) {
-                    string scramble = move1 + " " + move2 + " " + move3 + " " + move4;
-                    string cube_state = translate_scramble_to_moves(scramble);
-                    outputFile << scramble << " : " << cube_state << endl;
-                }
-            }
-        }
-    }
-    outputFile.close();
-    cout << "Scramble results saved to " << filename << endl;
-}*/
-
 // Function to generate move-group restrictions
 map<string, vector<string>> get_move_groups() {
     return {
@@ -684,33 +640,6 @@ map<string, vector<string>> get_move_groups() {
         {"D", {"D", "D2", "D'"}}, {"D2", {"D", "D2", "D'"}}, {"D'", {"D", "D2", "D'"}},
         {"Dw", {"Dw", "Dw2", "Dw'"}}, {"Dw2", {"Dw", "Dw2", "Dw'"}}, {"Dw'", {"Dw", "Dw2", "Dw'"}}
     };
-}
-
-// Function to generate all 2-move scrambles, ensuring no sequential moves from the same group
-void generate_two_move_scrambles(const vector<string>& moves, const string& initial_state, const string& filename) {
-    ofstream outputFile(filename);
-    if (!outputFile) {
-        cerr << "Error: Could not open file " << filename << " for writing." << endl;
-        return;
-    }
-
-    map<string, vector<string>> move_groups = get_move_groups();
-
-    for (const string& move1 : moves) {
-        for (const string& move2 : moves) {
-            // Skip if move2 is in the same group as move1
-            if (find(move_groups[move1].begin(), move_groups[move1].end(), move2) != move_groups[move1].end()) {
-                continue;
-            }
-
-            string scramble = move1 + " " + move2;
-            string cube_state = translate_scramble_to_moves(scramble);
-            outputFile << scramble << " : " << cube_state << endl;
-        }
-    }
-
-    outputFile.close();
-    cout << "Scramble results saved to " << filename << endl;
 }
 
 void generate_four_move_scrambles(const vector<string>& moves, const string& initial_state, const string& filename) {
@@ -752,113 +681,7 @@ void generate_four_move_scrambles(const vector<string>& moves, const string& ini
 }
 
 
- // Function to generate all 4-move scrambles, ensuring no sequential moves from the same group
 void generate_four_move_scrambles_unique_states(const vector<string>& moves, const string& initial_state, const string& filename) {
-    ofstream outputFile(filename);
-    if (!outputFile) {
-        cerr << "Error: Could not open file " << filename << " for writing." << endl;
-        return;
-    }
-
-    map<string, vector<string>> move_groups = get_move_groups();
-    unordered_map<string, string> seen_states; // Tracks unique normalized cube states
-
-    for (const string& move1 : moves) {
-        for (const string& move2 : moves) {
-            if (find(move_groups[move1].begin(), move_groups[move1].end(), move2) != move_groups[move1].end()) {
-                continue;
-            }
-            for (const string& move3 : moves) {
-                if (find(move_groups[move2].begin(), move_groups[move2].end(), move3) != move_groups[move2].end()) {
-                    continue;
-                }
-                for (const string& move4 : moves) {
-                    if (find(move_groups[move3].begin(), move_groups[move3].end(), move4) != move_groups[move3].end()) {
-                        continue;
-                    }
-
-                    string scramble = move1 + " " + move2 + " " + move3 + " " + move4;
-                    string cube_state = translate_scramble_to_moves(scramble);
-                    string normalized_state = fixLetterOrder(cube_state); // Apply fixLetterOrder
-
-                    // Check if the normalized state already exists
-                    if (seen_states.find(normalized_state) != seen_states.end()) {
-                        cout << "Duplicate state found! " << scramble 
-                             << " produces the same normalized state as: " 
-                             << seen_states[normalized_state] << endl;
-                        continue; // Skip saving duplicate states
-                    }
-
-                    // Save new normalized state and scramble
-                    seen_states[normalized_state] = scramble;
-                    outputFile << scramble << " : " << normalized_state << endl;
-                }
-            }
-        }
-    }
-
-    outputFile.close();
-    cout << "Scramble results saved to " << filename << endl;
-}
-
-void generate_four_move_scrambles_unique_states_lo_and_yrots(const vector<string>& moves, const string& initial_state, const string& filename) {
-    ofstream outputFile(filename);
-    if (!outputFile) {
-        cerr << "Error: Could not open file " << filename << " for writing." << endl;
-        return;
-    }
-
-    map<string, vector<string>> move_groups = get_move_groups();
-    unordered_map<string, string> seen_states; // Tracks unique normalized cube states
-
-    for (const string& move1 : moves) {
-        for (const string& move2 : moves) {
-            if (find(move_groups[move1].begin(), move_groups[move1].end(), move2) != move_groups[move1].end()) {
-                continue;
-            }
-            for (const string& move3 : moves) {
-                if (find(move_groups[move2].begin(), move_groups[move2].end(), move3) != move_groups[move2].end()) {
-                    continue;
-                }
-                for (const string& move4 : moves) {
-                    if (find(move_groups[move3].begin(), move_groups[move3].end(), move4) != move_groups[move3].end()) {
-                        continue;
-                    }
-
-                    string scramble = move1 + " " + move2 + " " + move3 + " " + move4;
-                    string cube_state = translate_scramble_to_moves(scramble);
-                    
-                    // Normalize using fixLetterOrder
-                    string normalized_state = fixLetterOrder(cube_state);
-
-                    // Apply y-rotations
-                    string y1_state = fixLetterOrder(y_rotation(cube_state));
-                    string y2_state = fixLetterOrder(y2_rotation(cube_state));
-                    string y3_state = fixLetterOrder(y3_rotation(cube_state));
-
-                    // Check if any of these states already exist
-                    if (seen_states.find(normalized_state) != seen_states.end() ||
-                        seen_states.find(y1_state) != seen_states.end() ||
-                        seen_states.find(y2_state) != seen_states.end() ||
-                        seen_states.find(y3_state) != seen_states.end()) {
-                        cout << "Duplicate state found! " << scramble 
-                             << " produces a state that already exists." << endl;
-                        continue; // Skip saving duplicate states
-                    }
-
-                    // Save the normalized state and its scramble
-                    seen_states[normalized_state] = scramble;
-                    outputFile << scramble << " : " << normalized_state << endl;
-                }
-            }
-        }
-    }
-
-    outputFile.close();
-    cout << "Scramble results saved to " << filename << endl;
-}
-
-void generate_four_move_scrambles_unique_states_all_rot_sep(const vector<string>& moves, const string& initial_state, const string& filename) {
     ofstream outputFile(filename);
     if (!outputFile) {
         cerr << "Error: Could not open file " << filename << " for writing." << endl;
@@ -873,6 +696,7 @@ void generate_four_move_scrambles_unique_states_all_rot_sep(const vector<string>
     int eliminated_y_rotation = 0;
     int eliminated_x_rotation = 0;
     int eliminated_z_rotation = 0;
+    int eliminated_double_rot = 0;
 
     for (const string& move1 : moves) {
         for (const string& move2 : moves) {
@@ -909,6 +733,37 @@ void generate_four_move_scrambles_unique_states_all_rot_sep(const vector<string>
                     string z2_state = fixLetterOrder(z2_rotation(cube_state));
                     string z3_state = fixLetterOrder(z3_rotation(cube_state));
 
+                    // Apply double rotations
+                    string double_rot_state = fixLetterOrder(x3_rotation(z_rotation(cube_state)));
+                    string double_rot_state2 = fixLetterOrder(x3_rotation(z2_rotation(cube_state)));
+                    string double_rot_state3 = fixLetterOrder(x3_rotation(z3_rotation(cube_state)));
+                    string double_rot_state4 = fixLetterOrder(y2_rotation(z_rotation(cube_state)));
+                    string double_rot_state5 = fixLetterOrder(y2_rotation(z2_rotation(cube_state)));
+                    string double_rot_state6 = fixLetterOrder(y2_rotation(z3_rotation(cube_state)));
+                    string double_rot_state7 = fixLetterOrder(y_rotation(z_rotation(cube_state)));
+                    string double_rot_state8 = fixLetterOrder(y_rotation(z2_rotation(cube_state)));
+                    string double_rot_state9 = fixLetterOrder(y_rotation(z3_rotation(cube_state)));
+                    string double_rot_state10 = fixLetterOrder(y3_rotation(z_rotation(cube_state)));
+                    string double_rot_state11 = fixLetterOrder(y3_rotation(z2_rotation(cube_state)));
+                    string double_rot_state12 = fixLetterOrder(y3_rotation(z3_rotation(cube_state)));
+                    string double_rot_state13 = fixLetterOrder(x_rotation(z_rotation(cube_state)));
+                    string double_rot_state14 = fixLetterOrder(x_rotation(z2_rotation(cube_state)));
+                    string double_rot_state15 = fixLetterOrder(x_rotation(z3_rotation(cube_state)));
+
+                    // Apply mirror-symmetries
+                    string m_state = fixLetterOrder(m_mirror(cube_state));
+                    string s_state = fixLetterOrder(s_mirror(cube_state));
+                    string e_state = fixLetterOrder(e_mirror(cube_state));
+
+                    // apply double mirrors
+                    string ms_state = fixLetterOrder(m_mirror(s_mirror(cube_state)));
+                    string sm_state = fixLetterOrder(s_mirror(m_mirror(cube_state)));
+                    string em_state = fixLetterOrder(e_mirror(m_mirror(cube_state)));
+                    string me_state = fixLetterOrder(m_mirror(e_mirror(cube_state)));
+                    string se_state = fixLetterOrder(s_mirror(e_mirror(cube_state)));
+                    string es_state = fixLetterOrder(e_mirror(s_mirror(cube_state)));
+
+
                     // Check if any of these states already exist
                     if (seen_states.find(normalized_state) != seen_states.end()) {
                         eliminated_letter_order++;
@@ -936,6 +791,81 @@ void generate_four_move_scrambles_unique_states_all_rot_sep(const vector<string>
                         cout << "Duplicate (Z-Rotation): " << scramble << " -> " << seen_states[z1_state] << endl;
                         continue;
                     }
+                    if (seen_states.find(double_rot_state) != seen_states.end() ||
+                        seen_states.find(double_rot_state2) != seen_states.end() ||
+                        seen_states.find(double_rot_state3) != seen_states.end() ||
+                        seen_states.find(double_rot_state4) != seen_states.end() ||
+                        seen_states.find(double_rot_state5) != seen_states.end() ||
+                        seen_states.find(double_rot_state6) != seen_states.end() ||
+                        seen_states.find(double_rot_state7) != seen_states.end() ||
+                        seen_states.find(double_rot_state8) != seen_states.end() ||
+                        seen_states.find(double_rot_state9) != seen_states.end() ||
+                        seen_states.find(double_rot_state10) != seen_states.end() ||
+                        seen_states.find(double_rot_state11) != seen_states.end() ||
+                        seen_states.find(double_rot_state12) != seen_states.end() ||
+                        seen_states.find(double_rot_state13) != seen_states.end() ||
+                        seen_states.find(double_rot_state14) != seen_states.end() ||
+                        seen_states.find(double_rot_state15) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (Double Rotation): " << scramble << " -> " << seen_states[double_rot_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(m_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (M-Mirror): " << scramble << " -> " << seen_states[m_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(s_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (S-Mirror): " << scramble << " -> " << seen_states[s_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(e_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (E-Mirror): " << scramble << " -> " << seen_states[e_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(ms_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (MS-Mirror): " << scramble << " -> " << seen_states[ms_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(sm_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (SM-Mirror): " << scramble << " -> " << seen_states[sm_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(me_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (ME-Mirror): " << scramble << " -> " << seen_states[me_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(em_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (EM-Mirror): " << scramble << " -> " << seen_states[em_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(se_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (SE-Mirror): " << scramble << " -> " << seen_states[se_state] << endl;
+                        continue;
+                    }
+
+                    if (seen_states.find(es_state) != seen_states.end()) {
+                        eliminated_double_rot++;
+                        cout << "Duplicate (ES-Mirror): " << scramble << " -> " << seen_states[es_state] << endl;
+                        continue;
+                    }
+
+
 
                     // Save the new state and its scramble
                     seen_states[normalized_state] = scramble;
@@ -953,6 +883,17 @@ void generate_four_move_scrambles_unique_states_all_rot_sep(const vector<string>
     cout << "Eliminated due to Y-Rotations: " << eliminated_y_rotation << endl;
     cout << "Eliminated due to X-Rotations: " << eliminated_x_rotation << endl;
     cout << "Eliminated due to Z-Rotations: " << eliminated_z_rotation << endl;
+    cout << "Eliminated due to Double Rotations: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to M-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to S-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to E-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to MS-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to SM-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to ME-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to EM-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to SE-Mirror: " << eliminated_double_rot << endl;
+    cout << "Eliminated due to ES-Mirror: " << eliminated_double_rot << endl;
+
 }
 
 
@@ -1003,31 +944,7 @@ int main() {
     };
     //string initial_state = "012345678901234567890123";  // Solved cube state
     string initial_state = "aaaabbbbccccbbbbccccaaaa";  // HTR-solved cube state
-    generate_four_move_scrambles_unique_states_all_rot_sep(moves, initial_state, "all_four_move_scrambles_all_rot_sep_no_col.txt");
-
-    //cout << "Scramble: " << remove_spaces(scramble) << endl;
-    //cout << translate_scramble_to_moves(remove_spaces(scramble)) << endl;
-
-    /*cout << "y_rotationTestFailures: " << y_rotationTestFailures << endl;
-    cout << "y2_rotationTestFailures: " << y2_rotationTestFailures << endl;
-    cout << "y3_rotationTestFailures: " << y3_rotationTestFailures << endl;  
-
-    cout << "z_rotationTestFailures: " << z_rotationTestFailures << endl;
-    cout << "z2_rotationTestFailures: " << z2_rotationTestFailures << endl;
-    cout << "z3_rotationTestFailures: " << z3_rotationTestFailures << endl;
-
-    cout << "x_rotationTestFailures: " << x_rotationTestFailures << endl;
-    cout << "x2_rotationTestFailures: " << x2_rotationTestFailures << endl;
-    cout << "x3_rotationTestFailures: " << x3_rotationTestFailures << endl;
-
-    cout << "m_mirrorTestFailures: " << m_mirrorTestFailures << endl;
-    cout << "s_mirrorTestFailures: " << s_mirrorTestFailures << endl;
-    cout << "e_mirrorTestFailures: " << e_mirrorTestFailures << endl;*/
-
-    //cout << "sm_mirrorTestFailures: " << sm_mirrorTestFailures << endl;
-    //cout << "ms_mirrorTestFailures: " << ms_mirrorTestFailures << endl;
-
-
+    generate_four_move_scrambles_unique_states(moves, initial_state, "all_four_move_scrambles_unique_states.txt");
 
     // Stop the timer
     auto end_time = high_resolution_clock::now();
