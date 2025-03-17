@@ -19,7 +19,7 @@ void modify_file(const string& input_filename, const string& output_filename) {
 
     string line;
     while (getline(input_file, line)) {
-        output_file << "find_solution_with_extra_moves(\"" << line << "\", \"all_five_move_scrambles_unique_states.txt\", moves);" << endl;
+        output_file << "find_solution_with_extra_moves(\"" << line << "\", \"derivation_7_to_8.txt\", moves);" << endl;
     }
 
     input_file.close();
