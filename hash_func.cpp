@@ -6,8 +6,8 @@
 #include <numeric>
 #include <chrono>
 #include <fstream>
-// I will be using the `robin_hood` library for faster unordered_map and unordered_set
-#include "robin_hood.h"
+#include <sstream>  // Added for stringstream
+
 
 
 using namespace std;
@@ -30,6 +30,21 @@ string uint128_to_string(__uint128_t value) {
         value /= 10;
     }
     return result.empty() ? "0" : result;
+}
+
+// Convert `__uint128_t` to a hex string manually
+string uint128_to_hex_string(__uint128_t value) {
+    if (value == 0) return "0";
+
+    const char* hex_chars = "0123456789abcdef";
+    string result;
+    
+    while (value) {
+        result = hex_chars[value % 16] + result;  // Extract hex digit
+        value /= 16;
+    }
+
+    return result;
 }
 
 // Multinomial ranking function (fixed)
@@ -63,9 +78,9 @@ __uint128_t multinomial_rank(const string &s, map<char, int> letter_counts) {
 void test_for_collisions() {
     string base_string = "aaaaaaabbbbbbbbcccccccc"; // 7 'a's, 8 'b's, 8 'c's
     unordered_map<__uint128_t, long long> histogram; // Store rank occurrences
-    ofstream output_file("res_compact.txt");
+    ofstream output_file("hex_2100mio.txt");
 
-    long limit = 1000000; 
+    long limit = 2100000000; 
     int total_permutations = 0;
     do {
         if (--limit == 0) break;
@@ -79,68 +94,94 @@ void test_for_collisions() {
         char combined_letter = 'o';
         if (base_string.substr(0, 3) == "aaa") {
             char combined_letter = 'A';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aab") {
             char combined_letter = 'B';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aac") {
             char combined_letter = 'C';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aba") {
             char combined_letter = 'D';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "abb") {
             char combined_letter = 'E';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "abc") {
             char combined_letter = 'F';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aca") {
             char combined_letter = 'G';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "acb") {
             char combined_letter = 'H';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "acc") {
             char combined_letter = 'I';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "baa") {
             char combined_letter = 'J';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bab") {
             char combined_letter = 'K';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bac") {
             char combined_letter = 'L';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bba") {
             char combined_letter = 'M';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bbb") {
             char combined_letter = 'N';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bbc") {
             char combined_letter = 'O';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bca") {
             char combined_letter = 'P';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bcb") {
             char combined_letter = 'Q';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bcc") {
             char combined_letter = 'R';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "caa") {
             char combined_letter = 'S';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cab") {
             char combined_letter = 'T';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cac") {
             char combined_letter = 'U';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cba") {
             char combined_letter = 'V';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cbb") {
             char combined_letter = 'W';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cbc") {
             char combined_letter = 'X';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cca") {
             char combined_letter = 'Y';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "ccb") {
             char combined_letter = 'Z';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "ccc") {
             char combined_letter = 'z';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         }
         
-        output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
     } while (next_permutation(base_string.begin(), base_string.end()));
 
     // Check for collisions
     int collisions = 0;
     for (const auto &entry : histogram) {
         if (entry.second > 1) {
-            output_file << "C" << uint128_to_string(entry.first) << "." << entry.second << "\n";
+            output_file << "C" << uint128_to_hex_string(entry.first) << "." << entry.second << "\n";
             collisions++;
         }
     }
@@ -155,7 +196,7 @@ void test_for_collisions() {
 void test_for_collisions_starting_from() {
     string base_string = "abbbbccccccccbbbbaaaaaa";
     unordered_map<__uint128_t, long long> histogram; // Store rank occurrences
-    ofstream output_file("res_compact.txt");
+    ofstream output_file("res_compact_hex.txt");
 
     long limit = 1000000; 
     int total_permutations = 0;
@@ -169,87 +210,88 @@ void test_for_collisions_starting_from() {
         //because writing 3 seperate letters into the txt-file is not space efficient, we will combine them into one char by this
         //list:
         char combined_letter = 'o';
-        cout << base_string.substr(0, 3) << endl;
+        //cout << base_string.substr(0, 3) << endl;
         if (base_string.substr(0, 3) == "aaa") {
             char combined_letter = 'A';
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aab") {
             char combined_letter = 'B';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aac") {
             char combined_letter = 'C';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aba") {
             char combined_letter = 'D';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "abb") {
             char combined_letter = 'E';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "abc") {
             char combined_letter = 'F';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "aca") {
             char combined_letter = 'G';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "acb") {
             char combined_letter = 'H';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "acc") {
             char combined_letter = 'I';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "baa") {
             char combined_letter = 'J';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bab") {
             char combined_letter = 'K';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bac") {
             char combined_letter = 'L';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bba") {
             char combined_letter = 'M';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bbb") {
             char combined_letter = 'N';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bbc") {
             char combined_letter = 'O';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bca") {
             char combined_letter = 'P';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bcb") {
             char combined_letter = 'Q';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "bcc") {
             char combined_letter = 'R';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "caa") {
             char combined_letter = 'S';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cab") {
             char combined_letter = 'T';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cac") {
             char combined_letter = 'U';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cba") {
             char combined_letter = 'V';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cbb") {
             char combined_letter = 'W';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cbc") {
             char combined_letter = 'X';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "cca") {
             char combined_letter = 'Y';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "ccb") {
             char combined_letter = 'Z';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         } else if (base_string.substr(0, 3) == "ccc") {
             char combined_letter = 'z';
-            output_file << combined_letter << "" << uint128_to_string(rank) << "\n";
+            output_file << combined_letter << "" << uint128_to_hex_string(rank) << "\n";
         }
 
     } while (next_permutation(base_string.begin(), base_string.end()));
@@ -258,7 +300,7 @@ void test_for_collisions_starting_from() {
     int collisions = 0;
     for (const auto &entry : histogram) {
         if (entry.second > 1) {
-            output_file << "C" << uint128_to_string(entry.first) << "." << entry.second << "\n";
+            output_file << "C" << uint128_to_hex_string(entry.first) << "." << entry.second << "\n";
             collisions++;
         }
     }
