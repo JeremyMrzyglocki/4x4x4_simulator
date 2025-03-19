@@ -6,8 +6,8 @@
 #include <numeric>
 #include <chrono>
 #include <fstream>
-#include <sstream>  // Added for stringstream
-
+#include <sstream>
+#include <bitset>
 
 
 using namespace std;
@@ -192,7 +192,6 @@ void test_for_collisions() {
     cout << "Total collisions found: " << collisions << endl;
     output_file.close();
 }
-
 void test_for_collisions_starting_from() {
     string base_string = "abbbbccccccccbbbbaaaaaa";
     unordered_map<__uint128_t, long long> histogram; // Store rank occurrences
@@ -349,6 +348,64 @@ __uint128_t multinomial_rank_debug(const string &s, map<char, int> letter_counts
     return rank;
 }
 
+
+// Function to convert a number to a zero-padded binary string of fixed length
+string to_binary_string(__uint128_t value, int bit_length) {
+    return bitset<31>(static_cast<uint32_t>(value)).to_string();
+}
+void find_in_bin_file(const string &input_string, const string &filename) {
+    // Compute multinomial rank
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+    __uint128_t rank = multinomial_rank(input_string, letter_counts);
+    cout << "Computed rank: " << uint128_to_string(rank) << endl;
+
+    // Convert rank to 31-bit binary representation
+    string rank_binary = bitset<31>(static_cast<uint32_t>(rank)).to_string();
+    cout << "Binary representation: " << rank_binary << endl;
+
+    // Calculate correct file position
+    streampos file_position = rank * sizeof(uint32_t);
+
+    ifstream input_file(filename, ios::binary);
+    if (!input_file) {
+        cerr << "Error opening file: " << filename << endl;
+        return;
+    }
+
+    uint32_t value;
+    string previous_line, match_line, next_line;
+
+    // Read the previous entry (if not the first)
+    if (file_position >= static_cast<streamoff>(sizeof(uint32_t))) {
+        input_file.seekg(file_position - static_cast<streamoff>(sizeof(uint32_t)), ios::beg);
+        input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
+        previous_line = bitset<31>(value).to_string();
+    } else {
+        previous_line = "N/A (No previous entry)";
+    }
+
+    // Read the matching entry
+    input_file.seekg(file_position, ios::beg);
+    input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
+    match_line = bitset<31>(value).to_string();
+
+    // Read the next entry
+    if (input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t))) {
+        next_line = bitset<31>(value).to_string();
+    } else {
+        next_line = "N/A (No next entry)";
+    }
+
+    input_file.close();
+
+    // Print results
+    cout << "\nFound rank at computed file position: " << file_position << " bytes" << endl;
+    if (!previous_line.empty()) cout << "Previous: " << previous_line << endl;
+    cout << "Match:    " << match_line << endl;
+    if (!next_line.empty()) cout << "Next:     " << next_line << endl;
+}
+
+
 int main() {
     auto start_time = high_resolution_clock::now();
 
@@ -357,7 +414,7 @@ int main() {
     
     //string start_string = "abbbcaaacbabbcacacbcbca";
     //string start_string = "aaaaaaabbbbbbbbcccccccc";
-    test_for_collisions();
+    //test_for_collisions();
     //multinomial_rank_debug("aaaaaacbcbccbbbccbccba", {{'a', 7}, {'b', 8}, {'c', 8}});
     //multinomial_rank_debug("abbbcaaacbabbcacacbcbcc", {{'a', 7}, {'b', 8}, {'c', 8}});
     
@@ -366,6 +423,11 @@ int main() {
     //cout << uint128_to_string(multinomial_rank("ccccccccbbbbbbbbaaaaaaaa", {{'a', 8}, {'b', 8}, {'c', 8}})) << endl;
     //cout << uint128_to_string(multinomial_rank("abaaaaaabbbbbbbcccccccc", {{'a', 7}, {'b', 8}, {'c', 8}})) << endl;
 
+
+
+    string filename = "2100mio.bin";
+    string input_string = "accccccccbbbbbbbbaaaaaa"; // Example cube state
+    find_in_bin_file(input_string, filename);
 
     auto end_time = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end_time - start_time);
