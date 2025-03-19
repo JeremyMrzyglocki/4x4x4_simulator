@@ -47,6 +47,7 @@ string uint128_to_hex_string(__uint128_t value) {
     return result;
 }
 
+
 // Multinomial ranking function (fixed)
 __uint128_t multinomial_rank(const string &s, map<char, int> letter_counts) {
     vector<char> sorted_chars = {'a', 'b', 'c'}; // Define possible characters in lexicographic order
@@ -73,7 +74,40 @@ __uint128_t multinomial_rank(const string &s, map<char, int> letter_counts) {
     }
     return rank;
 }
+__uint128_t multinomial_rank_explanation(const string &s, map<char, int> letter_counts) {
+    vector<char> sorted_chars = {'a', 'b', 'c'};
+    __uint128_t rank = 0;
 
+    cout << "Processing string: " << s << endl;
+
+    for (char c : s) {
+        cout << "  Processing char: " << c << " Remaining counts: ";
+        for (auto &[k, v] : letter_counts) cout << k << ":" << v << " ";
+        cout << endl;
+
+        for (char smaller : sorted_chars) {
+            if (smaller == c) break;
+            if (letter_counts[smaller] > 0) {
+                letter_counts[smaller]--;
+
+                __uint128_t total_count = accumulate(letter_counts.begin(), letter_counts.end(), (__uint128_t)0,
+                    []( __uint128_t sum, const pair<char, int>& p) { return sum + p.second; });
+
+                __uint128_t permutations = factorial_cache[total_count] / 
+                    accumulate(letter_counts.begin(), letter_counts.end(), (__uint128_t)1,
+                        []( __uint128_t prod, const pair<char, int>& p) { return prod * factorial_cache[p.second]; });
+
+                cout << "    Smaller letter: " << smaller << " → Added " << uint128_to_string(permutations) << " to rank" << endl;
+
+                rank += permutations;
+                letter_counts[smaller]++;
+            }
+        }
+        letter_counts[c]--;
+    }
+    cout << "Final computed rank: " << uint128_to_string(rank) << endl;
+    return rank;
+}
 // Function to test for collisions and save results to a file
 void test_for_collisions() {
     string base_string = "aaaaaaabbbbbbbbcccccccc"; // 7 'a's, 8 'b's, 8 'c's
@@ -311,42 +345,6 @@ void test_for_collisions_starting_from() {
     output_file.close();
 }
 
-
-
-__uint128_t multinomial_rank_debug(const string &s, map<char, int> letter_counts) {
-    vector<char> sorted_chars = {'a', 'b', 'c'};
-    __uint128_t rank = 0;
-
-    cout << "Processing string: " << s << endl;
-
-    for (char c : s) {
-        cout << "  Processing char: " << c << " Remaining counts: ";
-        for (auto &[k, v] : letter_counts) cout << k << ":" << v << " ";
-        cout << endl;
-
-        for (char smaller : sorted_chars) {
-            if (smaller == c) break;
-            if (letter_counts[smaller] > 0) {
-                letter_counts[smaller]--;
-
-                __uint128_t total_count = accumulate(letter_counts.begin(), letter_counts.end(), (__uint128_t)0,
-                    []( __uint128_t sum, const pair<char, int>& p) { return sum + p.second; });
-
-                __uint128_t permutations = factorial_cache[total_count] / 
-                    accumulate(letter_counts.begin(), letter_counts.end(), (__uint128_t)1,
-                        []( __uint128_t prod, const pair<char, int>& p) { return prod * factorial_cache[p.second]; });
-
-                cout << "    Smaller letter: " << smaller << " → Added " << uint128_to_string(permutations) << " to rank" << endl;
-
-                rank += permutations;
-                letter_counts[smaller]++;
-            }
-        }
-        letter_counts[c]--;
-    }
-    cout << "Final computed rank: " << uint128_to_string(rank) << endl;
-    return rank;
-}
 
 
 // Function to convert a number to a zero-padded binary string of fixed length
