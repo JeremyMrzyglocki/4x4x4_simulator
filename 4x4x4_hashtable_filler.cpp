@@ -196,7 +196,8 @@ void find_in_bin_file(const string &input_string, const string &filename) {
     if (!next_line.empty()) cout << "Next:     " << next_line << endl;
 }
 
-void read_binary_file(const string &filename, int num_entries) {
+
+void binary_viewer(const string &filename, int num_entries) {
     ifstream input_file(filename, ios::binary);
     if (!input_file) {
         cerr << "Error opening file: " << filename << endl;
@@ -206,18 +207,128 @@ void read_binary_file(const string &filename, int num_entries) {
     cout << "\nReading first " << num_entries << " entries from " << filename << "...\n";
 
     for (int i = 0; i < num_entries; ++i) {
-        uint32_t value;
-        input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
+        uint32_t packed_value;
+        input_file.read(reinterpret_cast<char*>(&packed_value), sizeof(uint32_t));
         if (input_file.eof()) break;
 
-        // Convert value to binary representation
-        string binary_representation = bitset<31>(value).to_string(); // Keep 31 bits
+        // Extract 31-bit number and 4-bit flag
+        uint32_t value_part = packed_value >> 4;   // Right shift to remove the flag
+        uint32_t flag_part = packed_value & 0xF;   // Mask last 4 bits for flag
 
-        cout << "Binary: " << binary_representation << "  |  Decimal: " << value << endl;
+        // Convert to binary representation
+        string binary_representation = bitset<31>(value_part).to_string();
+        string flag_representation = bitset<4>(flag_part).to_string();
+
+        cout << "Binary: " << binary_representation 
+             << " | Flag: " << flag_representation 
+             << " | Decimal: " << value_part << endl;
     }
 
     input_file.close();
 }
+
+void binary_viewer_last_n_entries(const string &filename, int num_entries) {
+    ifstream input_file(filename, ios::binary);
+    if (!input_file) {
+        cerr << "Error opening file: " << filename << endl;
+        return;
+    }
+
+    // Get the file size
+    input_file.seekg(0, ios::end);
+    streampos file_size = input_file.tellg();
+    int entry_size = sizeof(uint32_t);
+
+    // Calculate the total number of entries in the file
+    int total_entries = file_size / entry_size;
+    if (total_entries == 0) {
+        cerr << "Error: File is empty or corrupted." << endl;
+        return;
+    }
+
+    // Determine the starting position for reading the last `num_entries`
+    int start_index = max(0, total_entries - num_entries);
+    streampos start_position = start_index * entry_size;
+
+    input_file.seekg(start_position, ios::beg);
+
+    cout << "\nReading last " << num_entries << " entries from " << filename << "...\n";
+
+    for (int i = start_index; i < total_entries; ++i) {
+        uint32_t packed_value;
+        input_file.read(reinterpret_cast<char*>(&packed_value), sizeof(uint32_t));
+        if (input_file.eof()) break;
+
+        // Extract 31-bit number and 4-bit flag
+        uint32_t value_part = packed_value >> 4;   // Right shift to remove the flag
+        uint32_t flag_part = packed_value & 0xF;   // Mask last 4 bits for flag
+
+        // Convert to binary representation
+        string binary_representation = bitset<31>(value_part).to_string();
+        string flag_representation = bitset<4>(flag_part).to_string();
+
+        cout << "Binary: " << binary_representation 
+             << " | Flag: " << flag_representation 
+             << " | Decimal: " << value_part << endl;
+    }
+
+    input_file.close();
+}
+
+
+// Function to update flag in binary file at a specific index
+// Function to update flag in binary file at a specific index
+void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_flag) {
+    const int bit_length_1 = 31;  // Number of bits for value
+    const int bit_length_2 = 4;   // Number of bits for flag
+    const int entry_size = 4;     // Each entry is stored in 4 bytes (32 bits)
+
+    // Calculate position in file
+    streampos file_position = index * entry_size;
+
+    fstream file(filename, ios::binary | ios::in | ios::out);
+    if (!file) {
+        cerr << "Error opening file: " << filename << endl;
+        return;
+    }
+
+    file.seekg(file_position, ios::beg);
+    uint32_t entry;
+    file.read(reinterpret_cast<char*>(&entry), sizeof(uint32_t));
+
+    if (file.eof()) {
+        cerr << "Error: Index out of range (attempted index: " << index << ")" << endl;
+        file.close();
+        return;
+    }
+
+    // Extract the value part (first 31 bits)
+    uint32_t value_part = entry >> bit_length_2;
+    uint32_t current_flag = entry & 0xF;  // Extract the last 4 bits (flag)
+
+    // Print debug info
+    cout << "Hashindex: " << index 
+         << " | Binary: " << bitset<31>(value_part).to_string() 
+         << " | C. Flag: " << bitset<4>(current_flag).to_string() 
+         << " | N. Flag: " << bitset<4>(new_flag).to_string();
+
+    // Only update if the current flag is 1111 (binary) = 15 (decimal)
+    if (current_flag == 0b1111) {
+        uint32_t updated_entry = (value_part << bit_length_2) | (new_flag & 0xF);
+
+        // Write back the updated entry
+        file.seekp(file_position, ios::beg);
+        file.write(reinterpret_cast<const char*>(&updated_entry), sizeof(uint32_t));
+
+        cout << "  ✅ Flag updated!" << endl;
+
+    } else {
+        cout << "  ⚠️ Already upd." << endl;
+    }
+
+    file.close();
+}
+
 
 void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &filename) {
     auto start_time = high_resolution_clock::now();
@@ -228,16 +339,20 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
         return;
     }
     
-    // Calculate required bit length
-    //int bit_length = ceil(log2(end_val + 1));
-    int bit_length = 31; // needed for all of the cases for HTR C (2bio)
+    int bit_length_1 = 31;  // 31 bits for the main value
+    int bit_length_2 = 4;   // 4 bits reserved for flags
+    int total_bits = bit_length_1 + bit_length_2; // 35 bits total
 
-    cout << "Using " << bit_length << " bits per number." << endl;
+    cout << "Using " << total_bits << " bits per number ("
+         << bit_length_1 << " for value, " << bit_length_2 << " for flags)." << endl;
     
     for (__uint128_t i = start_val; i <= end_val; ++i) {
-        string binary_representation = to_binary_string(i, bit_length);
-        uint32_t packed_value = static_cast<uint32_t>(i); // Convert to 32-bit int
-    output_file.write(reinterpret_cast<const char*>(&packed_value), sizeof(uint32_t));
+        uint32_t value_part = static_cast<uint32_t>(i) & ((1U << bit_length_1) - 1);  // Store 31-bit number
+        uint32_t flag_part = 15;  // Store 4-bit flag
+
+        uint32_t packed_value = (value_part << bit_length_2) | (flag_part & 0xF); // Shift value left, add 4-bit flag
+        
+        output_file.write(reinterpret_cast<const char*>(&packed_value), sizeof(uint32_t));
     }
     
     output_file.close();
@@ -246,6 +361,71 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
     auto duration = duration_cast<milliseconds>(end_time - start_time);
     cout << "Binary generation time: " << duration.count() << " ms" << endl;
 }
+
+
+
+
+// Function to update depth 0: Flag starting state with 0000
+void depth_0_updater(const string &filename) { // here it is fine if the dont "fixLetterOrder(take_a_away(fixLetterOrder(state)))""
+    string starting_cubestate = "aaaabbbbccccbbbbccccaaaa";
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};  // After removing one 'a'
+
+    // Remove the first occurrence of 'a' from the starting state
+    string cubestate_without_first_a = starting_cubestate.substr(1); 
+
+    // Compute the index in the binary file
+    __uint128_t index = multinomial_rank(cubestate_without_first_a, letter_counts);
+
+    // Flag it as 0000
+    update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0000);
+    cout << "Flag at index " << uint128_to_string(index) << " set to 0000." << endl;
+}
+
+// Function to apply moves and generate new states (returns move-state pairs)
+vector<pair<string, string>> apply_all_moves(const string &cubestate, const vector<string> &moves) {
+    vector<pair<string, string>> new_states;
+    for (const string &move : moves) {
+        string new_state = apply_move(cubestate, move);
+        new_states.push_back({move, new_state}); // Store move and resulting state
+    }
+    return new_states;
+}
+
+// Function to update depth 1: Flag all new cube states
+void depth_1_updater(const string &filename) { 
+    string starting_cubestate = "aaaabbbbccccbbbbccccaaaa";
+
+    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
+
+    // Apply all moves and get move-state pairs
+    vector<pair<string, string>> move_results = apply_all_moves(starting_cubestate, moves);
+
+    cout << "\nGenerated new cube states from depth 1 moves:\n";
+    for (const auto &entry : move_results) {
+        string move = entry.first;
+        string fixed_state_with_23 = (fixLetterOrder(entry.second)).substr(1);   
+        cout << "Move applied: " << move 
+             << " | New State: " << entry.second 
+             << " | Fixed and 23-ed: " << fixed_state_with_23 << endl;
+    }
+
+    // Flagging all new cube states in binary file
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};  // Adjusted counts
+
+    for (const auto &entry : move_results) {
+        __uint128_t index = multinomial_rank((fixLetterOrder(entry.second).substr(1)), letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0001);
+    }
+}
+
+
+
+
+
+
+
 
 // 
 // Cubestate-changing functions
@@ -667,11 +847,11 @@ string B(const string& combination) {
 }
 
 string B2(const string& combination) {
-    string combination_new = B(combination);  // First transformation
-    return B(combination_new);               // Apply F again and return
+    string combination_new = B(combination); 
+    return B(combination_new);               
 }
 
-string B3(const string& combination) { // Perform F3 (F applied three times)
+string B3(const string& combination) { 
     return B(B2(combination));
 }
 
@@ -1349,11 +1529,9 @@ int main() {
 
 
 
-
+    /*
     //string initial_state = "012345678901234567890123";  // Solved cube state
     string initial_state = "aaaabbbbccccbbbbccccaaaa";  // HTR-solved cube state
-    // FIRST WORKING SOLVER:
-
     cout << "\n🔢 Total solutions (d0) found: " << solution_counter << endl;
     cout << "\n🔢 Total solutions (d1) found: " << solution_counter1 << endl;
     cout << "\n🔢 Total solutions (d2) found: " << solution_counter2 << endl;
@@ -1364,13 +1542,24 @@ int main() {
     test_multinomial_rank("aabbaaccbcbcccbaaccabbb", {{'a', 7}, {'b', 8}, {'c', 8}});
     test_multinomial_rank("abaacacbccaccbbacacbbbb", {{'a', 7}, {'b', 8}, {'c', 8}});
     test_multinomial_rank("aaccccccccbbbbbbababaaa", {{'a', 7}, {'b', 8}, {'c', 8}});
-    test_multinomial_rank("aaccccccccbbbbbbbbaaaaa", {{'a', 7}, {'b', 8}, {'c', 8}});
+    test_multinomial_rank("aaccccccccbbbbbbbbaaaaa", {{'a', 7}, {'b', 8}, {'c', 8}});*/
 
 
+    //string filename = "2100mio.bin";
+    //string input_string = "accccccccbbbbbbbbaaaaaa"; // Example cube state
+    //find_in_bin_file(input_string, filename);
+
+
+    //test_multinomial_rank("bccccccccbbbbbbbaaaaaaa", {{'a', 7}, {'b', 8}, {'c', 8}});
+    //test_multinomial_rank("abbbaabccccabbaccccbbaa", {{'a', 7}, {'b', 8}, {'c', 8}});
+
+    
     string filename = "2100mio.bin";
-    string input_string = "accccccccbbbbbbbbaaaaaa"; // Example cube state
-    find_in_bin_file(input_string, filename);
-
+    binary_generator(0, 2100000000, "2100mio.bin"); 
+    binary_viewer(filename, 10);
+    binary_viewer_last_n_entries(filename, 10);
+    depth_0_updater(filename);
+    depth_1_updater(filename);
 
 
     // Stop the timer
@@ -1379,7 +1568,3 @@ int main() {
     cout << "Execution time: " << duration.count() << " ms" << endl;
     return 0;
 }
-
-
-//next steps: have one big dataset with all depths
-//load the full dataset into arbeitspeicher once, then use it constantly
