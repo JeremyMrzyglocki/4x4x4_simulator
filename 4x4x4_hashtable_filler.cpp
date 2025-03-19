@@ -87,10 +87,18 @@ int solution_counter3 = 0;
 int solution_counter4 = 0;  
 
 
-unordered_set<string> updated_states3;  // Global variable to store updated states
-unordered_set<string> updated_states2;  // Global variable to store updated states
-unordered_set<string> updated_states1;  // Global variable to store updated states
 unordered_set<string> updated_states0;  // Global variable to store updated states
+unordered_set<string> updated_states1;  
+unordered_set<string> updated_states2;  
+unordered_set<string> updated_states3;  
+unordered_set<string> updated_states4;  
+unordered_set<string> updated_states5;  
+unordered_set<string> updated_states6;  
+unordered_set<string> updated_states7;  
+unordered_set<string> updated_states8;  
+unordered_set<string> updated_states9;  
+
+
 
 
 // Store logarithms of factorials to prevent overflow
@@ -323,10 +331,10 @@ void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_fl
 
     
     stringstream log_info;
-    log_info << "Hashindex: " << index
-        << " | Binary: " << bitset<31>(value_part).to_string()
-        << " | Current Flag: " << bitset<4>(current_flag).to_string()
-        << " | New Flag: " << bitset<4>(new_flag).to_string();
+    //log_info << "Hashindex: " << index
+    //    << " | Binary: " << bitset<31>(value_part).to_string()
+    //    << " | Current Flag: " << bitset<4>(current_flag).to_string()
+    //    << " | New Flag: " << bitset<4>(new_flag).to_string();
 
     // Only update if the current flag is 1111 (binary) = 15 (decimal)
     if (current_flag == 0b1111) {
@@ -336,13 +344,13 @@ void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_fl
         file.seekp(file_position, ios::beg);
         file.write(reinterpret_cast<const char*>(&updated_entry), sizeof(uint32_t));
 
-        log_info << "  ✅ Flag updated!";
+        //log_info << "  ✅ Flag updated!";
 
     } else {
         
-        log_info << "  ⚠️ Already upd.";
+        //log_info << "  ⚠️ Already upd.";
     }
-    log_message(log_info.str());
+    //log_message(log_info.str());
     file.close();
     
 }
@@ -384,7 +392,7 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
 
 
 // Function to update depth 0: Flag starting state with 0000
-void depth_0_updater(const string &filename) { // here it is fine if the dont "fixLetterOrder(take_a_away(fixLetterOrder(state)))""
+void depth_0_updater(const string &filename) { 
     string starting_cubestate = "aaaabbbbccccbbbbccccaaaa";
     map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};  // After removing one 'a'
 
@@ -399,6 +407,18 @@ void depth_0_updater(const string &filename) { // here it is fine if the dont "f
     log_message("Flag at index " + uint128_to_string(index) + " set to 0000.");
         
     updated_states0.insert(cubestate_without_first_a);  // Store the transformed state
+
+        ofstream file(filename, ios::out);
+    if (!file) {
+        log_message("Error opening file: " + filename);
+        return;
+    }
+
+    log_message("\nSaving updated states for depth 0 in " + filename);
+    for (const auto &state : updated_states0) {
+        file << state << endl;
+    }
+    file.close();
 }
 
 // Function to apply moves and generate new states (returns move-state pairs)
@@ -408,6 +428,7 @@ vector<pair<string, string>> apply_all_moves(const string &cubestate, const vect
         string new_state = apply_move(cubestate, move);
         new_states.push_back({move, new_state}); // Store move and resulting state
     }
+
     return new_states;
 }
 
@@ -438,6 +459,18 @@ void depth_1_updater(const string &filename) {
         __uint128_t index = multinomial_rank((fixLetterOrder(entry.second).substr(1)), letter_counts);
         update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0001);
     }
+
+        ofstream file(filename, ios::out);
+    if (!file) {
+        log_message("Error opening file: " + filename);
+        return;
+    }
+
+    log_message("\nSaving updated states for depth in " + filename);
+    for (const auto &state : updated_states1) {
+        file << state << endl;
+    }
+    file.close();
 }
 
 void depth_2_updater(const string &filename) {
@@ -500,6 +533,8 @@ void depth_2_updater(const string &filename) {
     updated_states2 = depth_2_states;  // ✅ Ensure states are stored for next step
 
     log_message("\n📁 Depth 2 states saved to updated_states_depth_2.txt");
+
+
 }
 
 
@@ -602,9 +637,9 @@ void depth_3_updater(const string &filename) {
             string fixed_new_state = fixLetterOrder(new_state).substr(1);
             depth_3_states.insert(fixed_new_state);
 
-            log_message("Move Applied: " + move + 
-                        " | Resulting Depth 3 State: " + new_state + 
-                        " | Fixed and 23-ed: " + fixed_new_state);
+            //log_message("Move Applied: " + move + 
+            //            " | Resulting Depth 3 State: " + new_state + 
+            //            " | Fixed and 23-ed: " + fixed_new_state);
         }
     }
 
@@ -628,9 +663,253 @@ void depth_3_updater(const string &filename) {
         file << state << endl;
     }
     file.close();
-
+    updated_states3 = depth_3_states; 
     log_message("\n📁 Depth 3 states saved to updated_states_depth_3.txt");
 }
+
+
+void depth_4_updater(const string &filename) {
+    log_message("\n🔄 Generating depth 4 states from updated depth 3 states...");
+
+    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
+
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> depth_4_states;
+
+    // Prepend 'a' to each state in updated_states3
+    for (const auto &state : updated_states3) {
+        updated_states_with_a.insert("a" + state);
+    }
+
+    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 3 states...\n");
+
+    int batch_counter = 1;
+
+    // Apply all moves to each depth 3 state
+    for (const auto &state : updated_states_with_a) {
+        //log_message("\n=== 🔹 Processing New Depth 3 State (Batch " + to_string(batch_counter) + ") ===");
+        //log_message("🔹 Original Depth 3 State: " + state);
+        batch_counter++;
+
+        for (const string &move : moves) {
+            string new_state = apply_move(state, move);
+            string fixed_new_state = fixLetterOrder(new_state).substr(1);
+            depth_4_states.insert(fixed_new_state);
+
+            //log_message("Move Applied: " + move + 
+            //            " | Resulting Depth 4 State: " + new_state + 
+            //            " | Fixed and 23-ed: " + fixed_new_state);
+        }
+    }
+
+    log_message("\n🔄 Updating " + to_string(depth_4_states.size()) + " depth 4 states in binary file...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : depth_4_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0100);
+    }
+
+    log_message("\n✅ Depth 4 state generation and update completed!");
+
+    // Save the new depth 4 states for future processing
+    ofstream file("updated_states_depth_4.txt", ios::out);
+    if (!file) {
+        log_message("❌ Error opening file: updated_states_depth_4.txt");
+        return;
+    }
+    for (const auto &state : depth_4_states) {
+        file << state << endl;
+    }
+    file.close();
+    updated_states4 = depth_4_states; 
+    log_message("\n📁 Depth 4 states saved to updated_states_depth_4.txt");
+}
+
+void depth_5_updater(const string &filename) {
+    log_message("\n🔄 Generating depth 5 states from updated depth 4 states...");
+
+    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
+
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> depth_5_states;
+
+    // Prepend 'a' to each state in updated_states4
+    for (const auto &state : updated_states4) {
+        updated_states_with_a.insert("a" + state);
+    }
+
+    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 4 states...\n");
+
+    int batch_counter = 1;
+
+    // Apply all moves to each depth 4 state
+    for (const auto &state : updated_states_with_a) {
+        //log_message("\n=== 🔹 Processing New Depth 4 State (Batch " + to_string(batch_counter) + ") ===");
+        //log_message("🔹 Original Depth 4 State: " + state);
+        batch_counter++;
+
+        for (const string &move : moves) {
+            string new_state = apply_move(state, move);
+            string fixed_new_state = fixLetterOrder(new_state).substr(1);
+            depth_5_states.insert(fixed_new_state);
+
+            //log_message("Move Applied: " + move + 
+            //            " | Resulting Depth 5 State: " + new_state + 
+            //            " | Fixed and 23-ed: " + fixed_new_state);
+        }
+    }
+
+    log_message("\n🔄 Updating " + to_string(depth_5_states.size()) + " depth 5 states in binary file...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : depth_5_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0100);
+    }
+
+    log_message("\n✅ Depth 5 state generation and update completed!");
+
+    // Save the new depth 5 states for future processing
+    ofstream file("updated_states_depth_5.txt", ios::out);
+    if (!file) {
+        log_message("❌ Error opening file: updated_states_depth_5.txt");
+        return;
+    }
+    for (const auto &state : depth_5_states) {
+        file << state << endl;
+    }
+    file.close();
+    updated_states5 = depth_5_states; 
+    log_message("\n📁 Depth 5 states saved to updated_states_depth_5.txt");
+}
+
+void depth_6_updater(const string &filename) {
+    log_message("\n🔄 Generating depth 6 states from updated depth 5 states...");
+
+    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
+
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> depth_6_states;
+
+    // Prepend 'a' to each state in updated_states5
+    for (const auto &state : updated_states5) {
+        updated_states_with_a.insert("a" + state);
+    }
+
+    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 5 states...\n");
+
+    int batch_counter = 1;
+
+    // Apply all moves to each depth 5 state
+    for (const auto &state : updated_states_with_a) {
+        //log_message("\n=== 🔹 Processing New Depth 5 State (Batch " + to_string(batch_counter) + ") ===");
+        //log_message("🔹 Original Depth 5 State: " + state);
+        batch_counter++;
+
+        for (const string &move : moves) {
+            string new_state = apply_move(state, move);
+            string fixed_new_state = fixLetterOrder(new_state).substr(1);
+            depth_6_states.insert(fixed_new_state);
+
+            //log_message("Move Applied: " + move + 
+            //            " | Resulting Depth 6 State: " + new_state + 
+            //            " | Fixed and 23-ed: " + fixed_new_state);
+        }
+    }
+
+    log_message("\n🔄 Updating " + to_string(depth_6_states.size()) + " depth 6 states in binary file...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : depth_6_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0110);
+    }
+
+    log_message("\n✅ Depth 6 state generation and update completed!");
+
+    // Save the new depth 6 states for future processing
+    ofstream file("updated_states_depth_6.txt", ios::out);
+    if (!file) {
+        log_message("❌ Error opening file: updated_states_depth_6.txt");
+        return;
+    }
+    for (const auto &state : depth_6_states) {
+        file << state << endl;
+    }
+    file.close();
+    updated_states6 = depth_6_states; 
+    log_message("\n📁 Depth 6 states saved to updated_states_depth_6.txt");
+}
+
+void depth_7_updater(const string &filename) {
+    log_message("\n🔄 Generating depth 7 states from updated depth 6 states...");
+
+    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
+
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> depth_7_states;
+
+    // Prepend 'a' to each state in updated_states6
+    for (const auto &state : updated_states6) {
+        updated_states_with_a.insert("a" + state);
+    }
+
+    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 6 states...\n");
+
+    int batch_counter = 1;
+
+    // Apply all moves to each depth 6 state
+    for (const auto &state : updated_states_with_a) {
+        //log_message("\n=== 🔹 Processing New Depth 6 State (Batch " + to_string(batch_counter) + ") ===");
+        //log_message("🔹 Original Depth 6 State: " + state);
+        batch_counter++;
+
+        for (const string &move : moves) {
+            string new_state = apply_move(state, move);
+            string fixed_new_state = fixLetterOrder(new_state).substr(1);
+            depth_7_states.insert(fixed_new_state);
+
+            //log_message("Move Applied: " + move + 
+            //            " | Resulting Depth 7 State: " + new_state + 
+            //            " | Fixed and 23-ed: " + fixed_new_state);
+        }
+    }
+
+    log_message("\n🔄 Updating " + to_string(depth_7_states.size()) + " depth 7 states in binary file...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : depth_7_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0111);
+    }
+
+    log_message("\n✅ Depth 7 state generation and update completed!");
+
+    // Save the new depth 7 states for future processing
+    ofstream file("updated_states_depth_7.txt", ios::out);
+    if (!file) {
+        log_message("❌ Error opening file: updated_states_depth_7.txt");
+        return;
+    }
+    for (const auto &state : depth_7_states) {
+        file << state << endl;
+    }
+    file.close();
+    updated_states7 = depth_7_states; 
+    log_message("\n📁 Depth 7 states saved to updated_states_depth_7.txt");
+}
+
+
+
 
 // === Depth 3 Rotation Updater ===
 void depth_3_rotation_updater(const string &filename) {
@@ -668,39 +947,39 @@ void depth_3_rotation_updater(const string &filename) {
     log_message("\n✅ Rotation-based depth 3 updates completed!");
 }
 
+void depth_4_rotation_updater(const string &filename) {
+    log_message("\n🔄 Applying all possible rotations to updated depth 4 states...");
 
+    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> rotated_states;
 
-
-
-
-void save_updated_states0(const string &depth_filename) {
-    ofstream file(depth_filename, ios::out);
-    if (!file) {
-        log_message("Error opening file: " + depth_filename);
-        return;
+    // Prepend 'a' to each state in updated_states3 (which now contains depth 4 states)
+    for (const auto &state : updated_states3) {
+        updated_states_with_a.insert("a" + state);
     }
 
-    log_message("\nSaving updated states for depth 0 in " + depth_filename);
-    for (const auto &state : updated_states0) {
-        file << state << endl;
-    }
-    file.close();
-}
+    for (const auto &state : updated_states_with_a) {
+        for (const string &rotation : rotations) {
+            string rotated_state = apply_move(state, rotation);
+            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
+            rotated_states.insert(fixed_rotated_state);
 
-
-// Function to save updated states for further processing
-void save_updated_states1(const string &depth_filename) {
-    ofstream file(depth_filename, ios::out);
-    if (!file) {
-        log_message("Error opening file: " + depth_filename);
-        return;
+            log_message("Rotation Applied: " + rotation + 
+                        " | Resulting Rotated Depth 4 State: " + rotated_state + 
+                        " | Fixed: " + fixed_rotated_state);
+        }
     }
 
-    log_message("\nSaving updated states for depth in " + depth_filename);
-    for (const auto &state : updated_states1) {
-        file << state << endl;
+    log_message("\n🔄 Updating rotated depth 4 states in binary file...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : rotated_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0100);
     }
-    file.close();
+
+    log_message("\n✅ Rotation-based depth 4 updates completed!");
 }
 
 
@@ -1238,563 +1517,6 @@ map<string, vector<string>> get_move_groups() {
 }
 
 
-
-
-
-
-
-
-
-void find_solution_with_0_extra_moves(const string& scramble, const string& search_filename) {
-        if (solution_found) return;  // Stop if a solution was already found
-
-    cout << "\n🔍 Searching for solution to scramble: " << scramble << endl;
-
-    unordered_map<string, string> state_to_scramble;  // Maps cube state -> original scramble
-    ifstream file(search_filename);
-
-    if (!file) {
-        cerr << "❌ Error: Could not open " << search_filename << " for reading!" << endl;
-        return;
-    }
-
-    string line;
-    while (getline(file, line)) {
-    //cout << "start" << endl;
-        size_t state_start = line.find('a');
-        if (state_start != string::npos) {
-            string scramble_seq = line.substr(0, state_start - 1); // Extract scramble
-            string state = line.substr(state_start); // Extract state
-            state.erase(remove(state.begin(), state.end(), ' '), state.end()); // Remove spaces
-            state_to_scramble[state] = scramble_seq; // Map state -> scramble
-        }
-    }
-    //cout << "end" << endl;
-    file.close();
-
-    cout << "✅ Loaded " << state_to_scramble.size() << " unique cube states from file.\n" << endl;
-
-    // Base state (after applying input scramble)
-    string base_state = translate_scramble_to_moves(scramble);
-    //cout << "🔄 Cube state after scramble: " << base_state << endl;
-
-    unordered_map<string, string> sym_states = {
-        {fixLetterOrder(base_state), "Original"},
-        {fixLetterOrder(y_rotation(base_state)), "y Rotation"},
-        {fixLetterOrder(y2_rotation(base_state)), "y2 Rotation"},
-        {fixLetterOrder(y3_rotation(base_state)), "y' Rotation"},
-        {fixLetterOrder(x_rotation(base_state)), "x Rotation"},
-        {fixLetterOrder(x2_rotation(base_state)), "x2 Rotation"},
-        {fixLetterOrder(x3_rotation(base_state)), "x' Rotation"},
-        {fixLetterOrder(z_rotation(base_state)), "z Rotation"},
-        {fixLetterOrder(z2_rotation(base_state)), "z2 Rotation"},
-        {fixLetterOrder(z3_rotation(base_state)), "z' Rotation"},
-        {fixLetterOrder(m_mirror(base_state)), "M Mirror"},
-        {fixLetterOrder(s_mirror(base_state)), "S Mirror"},
-        {fixLetterOrder(e_mirror(base_state)), "E Mirror"},
-        {fixLetterOrder(m_mirror(s_mirror(base_state))), "M + S Mirror"},
-        {fixLetterOrder(s_mirror(m_mirror(base_state))), "S + M Mirror"},
-        {fixLetterOrder(e_mirror(m_mirror(base_state))), "E + M Mirror"},
-        {fixLetterOrder(m_mirror(e_mirror(base_state))), "M + E Mirror"},
-        {fixLetterOrder(s_mirror(e_mirror(base_state))), "S + E Mirror"},
-        {fixLetterOrder(e_mirror(s_mirror(base_state))), "E + S Mirror"}
-    };
-
-    // Debug output: Show transformed states
-    for (const auto& [transformed_state, transformation_desc] : sym_states) {
-        //cout << "🔄 Transformation: " << transformation_desc << " -> " << transformed_state << endl;
-    }
-
-    // Search in the dataset
-    for (const auto& [transformed_state, transformation_desc] : sym_states) {
-        auto it = state_to_scramble.find(transformed_state);
-        if (it != state_to_scramble.end()) {
-            string original_scramble = it->second; // Retrieve original scramble
-            solution_found = true;  // ✅ Mark as found
-
-            solution_counter++;  // 🔥 INCREMENT SOLUTION COUNTER HERE
-
-            cout << "\n✅ Found solution!" << endl;
-            cout << "🔹 Given scramble: " << scramble << endl;
-            cout << "🔹 Applied transformation: " << transformation_desc << endl;
-            cout << "🔹 Matching dataset scramble: " << original_scramble << endl;
-            cout << "🔹 Final solution sequence: " << transformation_desc 
-                << " invert(" << original_scramble << ")" << endl;
-            cout << "🧩 Final cube state (for debugging): " << transformed_state << endl;
-
-            return;
-        }
-    }
-
-    cout << "\n❌ No solution found for scramble: " << scramble << endl;
-}
-
-
-void find_solution_with_1_extra_move(const string& scramble, const string& search_filename, const vector<string>& moves) {
-        if (solution_found) return;  // Stop if a solution was already found
-
-    cout << "\n🔍 Processing scramble: " << scramble << endl;
-
-    unordered_map<string, string> state_to_scramble;  // Maps cube state -> original scramble
-    ifstream file(search_filename);
-
-    if (!file) {
-        cerr << "❌ Error: Could not open " << search_filename << " for reading!" << endl;
-        return;
-    }
-
-    string line;
-    while (getline(file, line)) {
-        size_t state_start = line.find('a');
-        if (state_start != string::npos) {
-            string scramble_seq = line.substr(0, state_start - 1); // Extract scramble
-            string state = line.substr(state_start); // Extract state
-            state.erase(remove(state.begin(), state.end(), ' '), state.end()); // Remove spaces
-            state_to_scramble[state] = scramble_seq; // Map state -> scramble
-        }
-    }
-    file.close();
-
-    cout << "✅ Loaded " << state_to_scramble.size() << " unique cube states from file.\n" << endl;
-
-    // Base state (after applying input scramble)
-    string base_state = translate_scramble_to_moves(scramble);
-    //cout << "🔄 Cube state after scramble: " << base_state << endl;
-
-    unordered_map<string, string> temporary_branches;
-
-    // Generate moves of depth 1
-    for (const string& move1 : moves) {
-        string scramble_1 = scramble + " " + move1;
-        string state_1 = translate_scramble_to_moves(scramble_1);
-        //cout << "➡️ After move '" << move1 << "': " << state_1 << endl;
-        temporary_branches[state_1] = move1; // Store only the extra move
-    }
-
-    cout << "\n🌀 Generated " << temporary_branches.size() << " temporary branches.\n" << endl;
-
-    // Apply normalization and symmetry transformations
-    for (const auto& [state, move_applied] : temporary_branches) {
-        //cout << "\n🔍 Checking state: " << state << " (from extra move: " << move_applied << ")" << endl;
-
-        unordered_map<string, string> sym_states = {
-            {fixLetterOrder(state), "Original"},
-            {fixLetterOrder(y_rotation(state)), "y Rotation"},
-            {fixLetterOrder(y2_rotation(state)), "y2 Rotation"},
-            {fixLetterOrder(y3_rotation(state)), "y' Rotation"},
-            {fixLetterOrder(x_rotation(state)), "x Rotation"},
-            {fixLetterOrder(x2_rotation(state)), "x2 Rotation"},
-            {fixLetterOrder(x3_rotation(state)), "x' Rotation"},
-            {fixLetterOrder(z_rotation(state)), "z Rotation"},
-            {fixLetterOrder(z2_rotation(state)), "z2 Rotation"},
-            {fixLetterOrder(z3_rotation(state)), "z' Rotation"},
-            {fixLetterOrder(m_mirror(state)), "M Mirror"},
-            {fixLetterOrder(s_mirror(state)), "S Mirror"},
-            {fixLetterOrder(e_mirror(state)), "E Mirror"},
-            {fixLetterOrder(m_mirror(s_mirror(state))), "M + S Mirror"},
-            {fixLetterOrder(s_mirror(m_mirror(state))), "S + M Mirror"},
-            {fixLetterOrder(e_mirror(m_mirror(state))), "E + M Mirror"},
-            {fixLetterOrder(m_mirror(e_mirror(state))), "M + E Mirror"},
-            {fixLetterOrder(s_mirror(e_mirror(state))), "S + E Mirror"},
-            {fixLetterOrder(e_mirror(s_mirror(state))), "E + S Mirror"}
-        };
-
-        // Debug output: Show transformed states
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            //cout << "🔄 Transformation: " << transformation_desc << " -> " << transformed_state << endl;
-        }
-
-        // Search in the dataset
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            auto it = state_to_scramble.find(transformed_state);
-            if (it != state_to_scramble.end()) {
-                string original_scramble = it->second; // Retrieve original scramble
-                solution_found = true;  // ✅ Mark as found
-
-                solution_counter1++;  // 🔥 INCREMENT SOLUTION COUNTER HERE
-
-                cout << "\n✅ Found solution!" << endl;
-                cout << "🔹 Given scramble: " << scramble << endl;
-                cout << "🔹 Extra move applied: " << move_applied << endl;
-                cout << "🔹 Applied transformation: " << transformation_desc << endl;
-                cout << "🔹 Matching dataset scramble: " << original_scramble << endl;
-                cout << "🔹 Final solution sequence: " << move_applied 
-                    << " " << transformation_desc << " invert(" << original_scramble << ")" << endl;
-                cout << "🧩 Final cube state (for debugging): " << transformed_state << endl;
-
-                return;
-            }   
-            
-        }
-    }
-
-    cout << "\n❌ No solution found for scramble: " << scramble << endl;
-}
-
-
-void find_solution_with_2_extra_moves(const string& scramble, const string& search_filename, const vector<string>& moves) {
-        if (solution_found) return;  // Stop if a solution was already found
-
-    cout << "\n🔍 Processing scramble: " << scramble << endl;
-
-    unordered_map<string, string> state_to_scramble;  // Maps cube state -> original scramble
-    ifstream file(search_filename);
-
-    if (!file) {
-        cerr << "❌ Error: Could not open " << search_filename << " for reading!" << endl;
-        return;
-    }
-
-    string line;
-    while (getline(file, line)) {
-        size_t state_start = line.find('a');
-        if (state_start != string::npos) {
-            string scramble_seq = line.substr(0, state_start - 1); // Extract scramble
-            string state = line.substr(state_start); // Extract state
-            state.erase(remove(state.begin(), state.end(), ' '), state.end()); // Remove spaces
-            state_to_scramble[state] = scramble_seq; // Map state -> scramble
-        }
-    }
-    file.close();
-
-    cout << "✅ Loaded " << state_to_scramble.size() << " unique cube states from file.\n" << endl;
-
-    // Base state (after applying input scramble)
-    string base_state = translate_scramble_to_moves(scramble);
-    //cout << "🔄 Cube state after scramble: " << base_state << endl;
-
-    unordered_map<string, string> temporary_branches;
-
-    // Generate moves of depth 1 and 2
-    for (const string& move1 : moves) {
-        string scramble_1 = scramble + " " + move1;
-        string state_1 = translate_scramble_to_moves(scramble_1);
-        //cout << "➡️ After move '" << move1 << "': " << state_1 << endl;
-        temporary_branches[state_1] = move1; // Store only the extra move
-
-        for (const string& move2 : moves) {
-            string scramble_2 = scramble_1 + " " + move2;
-            string state_2 = translate_scramble_to_moves(scramble_2);
-            //cout << "➡️ After moves '" << move1 << " " << move2 << "': " << state_2 << endl;
-            temporary_branches[state_2] = move1 + " " + move2; // Store only the extra two moves
-        }
-    }
-
-    cout << "\n🌀 Generated " << temporary_branches.size() << " temporary branches.\n" << endl;
-
-    // Apply normalization and symmetry transformations
-    for (const auto& [state, moves_applied] : temporary_branches) {
-        //cout << "\n🔍 Checking state: " << state << " (from extra moves: " << moves_applied << ")" << endl;
-
-        unordered_map<string, string> sym_states = {
-            {fixLetterOrder(state), "Original"},
-            {fixLetterOrder(y_rotation(state)), "y Rotation"},
-            {fixLetterOrder(y2_rotation(state)), "y2 Rotation"},
-            {fixLetterOrder(y3_rotation(state)), "y' Rotation"},
-            {fixLetterOrder(x_rotation(state)), "x Rotation"},
-            {fixLetterOrder(x2_rotation(state)), "x2 Rotation"},
-            {fixLetterOrder(x3_rotation(state)), "x' Rotation"},
-            {fixLetterOrder(z_rotation(state)), "z Rotation"},
-            {fixLetterOrder(z2_rotation(state)), "z2 Rotation"},
-            {fixLetterOrder(z3_rotation(state)), "z' Rotation"},
-            {fixLetterOrder(m_mirror(state)), "M Mirror"},
-            {fixLetterOrder(s_mirror(state)), "S Mirror"},
-            {fixLetterOrder(e_mirror(state)), "E Mirror"},
-            {fixLetterOrder(m_mirror(s_mirror(state))), "M + S Mirror"},
-            {fixLetterOrder(s_mirror(m_mirror(state))), "S + M Mirror"},
-            {fixLetterOrder(e_mirror(m_mirror(state))), "E + M Mirror"},
-            {fixLetterOrder(m_mirror(e_mirror(state))), "M + E Mirror"},
-            {fixLetterOrder(s_mirror(e_mirror(state))), "S + E Mirror"},
-            {fixLetterOrder(e_mirror(s_mirror(state))), "E + S Mirror"}
-        };
-
-        // Debug output: Show transformed states
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            //cout << "🔄 Transformation: " << transformation_desc << " -> " << transformed_state << endl;
-        }
-
-        // Search in the dataset
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            auto it = state_to_scramble.find(transformed_state);
-            if (it != state_to_scramble.end()) {
-            string original_scramble = it->second; // Retrieve original scramble
-            solution_found = true;  // ✅ Mark as found
-
-            solution_counter2++;  // 🔥 INCREMENT SOLUTION COUNTER HERE
-
-            cout << "\n✅ Found solution!" << endl;
-            cout << "🔹 Given scramble: " << scramble << endl;
-            cout << "🔹 Extra move applied: " << moves_applied << endl;
-            cout << "🔹 Applied transformation: " << transformation_desc << endl;
-            cout << "🔹 Matching dataset scramble: " << original_scramble << endl;
-            cout << "🔹 Final solution sequence: " << moves_applied 
-                << " " << transformation_desc << " invert(" << original_scramble << ")" << endl;
-            cout << "🧩 Final cube state (for debugging): " << transformed_state << endl;
-
-            return;
-        }
-        }
-    }
-
-    cout << "\n❌ No solution found for scramble: " << scramble << endl;
-}
-
-
-void find_solution_with_3_extra_moves(const string& scramble, const string& search_filename, const vector<string>& moves) {
-        if (solution_found) return;  // Stop if a solution was already found
-
-    cout << "\n🔍 Processing scramble: " << scramble << endl;
-
-    unordered_map<string, string> state_to_scramble;  // Maps cube state -> original scramble
-    ifstream file(search_filename);
-
-    if (!file) {
-        cerr << "❌ Error: Could not open " << search_filename << " for reading!" << endl;
-        return;
-    }
-
-    string line;
-    while (getline(file, line)) {
-        size_t state_start = line.find('a');
-        if (state_start != string::npos) {
-            string scramble_seq = line.substr(0, state_start - 1); // Extract scramble
-            string state = line.substr(state_start); // Extract state
-            state.erase(remove(state.begin(), state.end(), ' '), state.end()); // Remove spaces
-            state_to_scramble[state] = scramble_seq; // Map state -> scramble
-        }
-    }
-    file.close();
-
-    cout << "✅ Loaded " << state_to_scramble.size() << " unique cube states from file.\n" << endl;
-
-    // Base state (after applying input scramble)
-    string base_state = translate_scramble_to_moves(scramble);
-    //cout << "🔄 Cube state after scramble: " << base_state << endl;
-
-    unordered_map<string, string> temporary_branches;
-
-    // Generate moves of depth 1, 2, and 3
-    for (const string& move1 : moves) {
-        string scramble_1 = scramble + " " + move1;
-        string state_1 = translate_scramble_to_moves(scramble_1);
-        //cout << "➡️ After move '" << move1 << "': " << state_1 << endl;
-        temporary_branches[state_1] = move1; // Store only the extra move
-
-        for (const string& move2 : moves) {
-            string scramble_2 = scramble_1 + " " + move2;
-            string state_2 = translate_scramble_to_moves(scramble_2);
-            //cout << "➡️ After moves '" << move1 << " " << move2 << "': " << state_2 << endl;
-            temporary_branches[state_2] = move1 + " " + move2; // Store only the extra two moves
-
-            for (const string& move3 : moves) {
-                string scramble_3 = scramble_2 + " " + move3;
-                string state_3 = translate_scramble_to_moves(scramble_3);
-                //cout << "➡️ After moves '" << move1 << " " << move2 << " " << move3 << "': " << state_3 << endl;
-                temporary_branches[state_3] = move1 + " " + move2 + " " + move3; // Store only the extra three moves
-            }
-        }
-    }
-
-    cout << "\n🌀 Generated " << temporary_branches.size() << " temporary branches.\n" << endl;
-
-    // Apply normalization and symmetry transformations
-    for (const auto& [state, moves_applied] : temporary_branches) {
-        //cout << "\n🔍 Checking state: " << state << " (from extra moves: " << moves_applied << ")" << endl;
-
-        unordered_map<string, string> sym_states = {
-            {fixLetterOrder(state), "Original"},
-            {fixLetterOrder(y_rotation(state)), "y Rotation"},
-            {fixLetterOrder(y2_rotation(state)), "y2 Rotation"},
-            {fixLetterOrder(y3_rotation(state)), "y' Rotation"},
-            {fixLetterOrder(x_rotation(state)), "x Rotation"},
-            {fixLetterOrder(x2_rotation(state)), "x2 Rotation"},
-            {fixLetterOrder(x3_rotation(state)), "x' Rotation"},
-            {fixLetterOrder(z_rotation(state)), "z Rotation"},
-            {fixLetterOrder(z2_rotation(state)), "z2 Rotation"},
-            {fixLetterOrder(z3_rotation(state)), "z' Rotation"},
-            {fixLetterOrder(m_mirror(state)), "M Mirror"},
-            {fixLetterOrder(s_mirror(state)), "S Mirror"},
-            {fixLetterOrder(e_mirror(state)), "E Mirror"},
-            {fixLetterOrder(m_mirror(s_mirror(state))), "M + S Mirror"},
-            {fixLetterOrder(s_mirror(m_mirror(state))), "S + M Mirror"},
-            {fixLetterOrder(e_mirror(m_mirror(state))), "E + M Mirror"},
-            {fixLetterOrder(m_mirror(e_mirror(state))), "M + E Mirror"},
-            {fixLetterOrder(s_mirror(e_mirror(state))), "S + E Mirror"},
-            {fixLetterOrder(e_mirror(s_mirror(state))), "E + S Mirror"}
-        };
-
-        // Debug output: Show transformed states
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            //cout << "🔄 Transformation: " << transformation_desc << " -> " << transformed_state << endl;
-        }
-
-        // Search in the dataset
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            auto it = state_to_scramble.find(transformed_state);
-            if (it != state_to_scramble.end()) {
-                string original_scramble = it->second; // Retrieve original scramble
-                solution_found = true;  // ✅ Mark as found
-
-                solution_counter3++;  // 🔥 INCREMENT SOLUTION COUNTER HERE
-
-                cout << "\n✅ Found solution!" << endl;
-                cout << "🔹 Given scramble: " << scramble << endl;
-                cout << "🔹 Extra move applied: " << moves_applied << endl;
-                cout << "🔹 Applied transformation: " << transformation_desc << endl;
-                cout << "🔹 Matching dataset scramble: " << original_scramble << endl;
-                cout << "🔹 Final solution sequence: " << moves_applied 
-                    << " " << transformation_desc << " invert(" << original_scramble << ")" << endl;
-                cout << "🧩 Final cube state (for debugging): " << transformed_state << endl;
-
-                return;
-            }
-        }
-    }
-
-    cout << "\n❌ No solution found for scramble: " << scramble << endl;
-}
-
-void find_solution_with_4_extra_moves(const string& scramble, const string& search_filename, const vector<string>& moves) {
-    if (solution_found) return;  // Stop if a solution was already found
-
-    cout << "\n🔍 Processing scramble: " << scramble << endl;
-
-    unordered_map<string, string> state_to_scramble;  // Maps cube state -> original scramble
-    ifstream file(search_filename);
-
-    if (!file) {
-        cerr << "❌ Error: Could not open " << search_filename << " for reading!" << endl;
-        return;
-    }
-
-    string line;
-    while (getline(file, line)) {
-        size_t state_start = line.find('a');
-        if (state_start != string::npos) {
-            string scramble_seq = line.substr(0, state_start - 1); // Extract scramble
-            string state = line.substr(state_start); // Extract state
-            state.erase(remove(state.begin(), state.end(), ' '), state.end()); // Remove spaces
-            state_to_scramble[state] = scramble_seq; // Map state -> scramble
-        }
-    }
-    file.close();
-
-    cout << "✅ Loaded " << state_to_scramble.size() << " unique cube states from file.\n" << endl;
-
-    // Base state (after applying input scramble)
-    string base_state = translate_scramble_to_moves(scramble);
-
-    unordered_map<string, string> temporary_branches;
-
-    // Generate moves of depth 1, 2, 3, and 4
-    for (const string& move1 : moves) {
-        string scramble_1 = scramble + " " + move1;
-        string state_1 = translate_scramble_to_moves(scramble_1);
-        temporary_branches[state_1] = move1; // Store only the extra move
-
-        for (const string& move2 : moves) {
-            string scramble_2 = scramble_1 + " " + move2;
-            string state_2 = translate_scramble_to_moves(scramble_2);
-            temporary_branches[state_2] = move1 + " " + move2; // Store only the extra two moves
-
-            for (const string& move3 : moves) {
-                string scramble_3 = scramble_2 + " " + move3;
-                string state_3 = translate_scramble_to_moves(scramble_3);
-                temporary_branches[state_3] = move1 + " " + move2 + " " + move3; // Store only the extra three moves
-
-                for (const string& move4 : moves) {
-                    string scramble_4 = scramble_3 + " " + move4;
-                    string state_4 = translate_scramble_to_moves(scramble_4);
-                    temporary_branches[state_4] = move1 + " " + move2 + " " + move3 + " " + move4; // Store only the extra four moves
-                }
-            }
-        }
-    }
-
-    cout << "\n🌀 Generated " << temporary_branches.size() << " temporary branches.\n" << endl;
-
-    // Apply normalization and symmetry transformations
-    for (const auto& [state, moves_applied] : temporary_branches) {
-        unordered_map<string, string> sym_states = {
-            {fixLetterOrder(state), "Original"},
-            {fixLetterOrder(y_rotation(state)), "y Rotation"},
-            {fixLetterOrder(y2_rotation(state)), "y2 Rotation"},
-            {fixLetterOrder(y3_rotation(state)), "y' Rotation"},
-            {fixLetterOrder(x_rotation(state)), "x Rotation"},
-            {fixLetterOrder(x2_rotation(state)), "x2 Rotation"},
-            {fixLetterOrder(x3_rotation(state)), "x' Rotation"},
-            {fixLetterOrder(z_rotation(state)), "z Rotation"},
-            {fixLetterOrder(z2_rotation(state)), "z2 Rotation"},
-            {fixLetterOrder(z3_rotation(state)), "z' Rotation"},
-            {fixLetterOrder(m_mirror(state)), "M Mirror"},
-            {fixLetterOrder(s_mirror(state)), "S Mirror"},
-            {fixLetterOrder(e_mirror(state)), "E Mirror"},
-            {fixLetterOrder(m_mirror(s_mirror(state))), "M + S Mirror"},
-            {fixLetterOrder(s_mirror(m_mirror(state))), "S + M Mirror"},
-            {fixLetterOrder(e_mirror(m_mirror(state))), "E + M Mirror"},
-            {fixLetterOrder(m_mirror(e_mirror(state))), "M + E Mirror"},
-            {fixLetterOrder(s_mirror(e_mirror(state))), "S + E Mirror"},
-            {fixLetterOrder(e_mirror(s_mirror(state))), "E + S Mirror"}
-        };
-
-        // Search in the dataset
-        for (const auto& [transformed_state, transformation_desc] : sym_states) {
-            auto it = state_to_scramble.find(transformed_state);
-            if (it != state_to_scramble.end()) {
-                string original_scramble = it->second; // Retrieve original scramble
-                solution_found = true;  // ✅ Mark as found
-
-                solution_counter4++;  // 🔥 INCREMENT SOLUTION COUNTER HERE
-
-                cout << "\n✅ Found solution!" << endl;
-                cout << "🔹 Given scramble: " << scramble << endl;
-                cout << "🔹 Extra moves applied: " << moves_applied << endl;
-                cout << "🔹 Applied transformation: " << transformation_desc << endl;
-                cout << "🔹 Matching dataset scramble: " << original_scramble << endl;
-                cout << "🔹 Final solution sequence: " << moves_applied 
-                    << " " << transformation_desc << " invert(" << original_scramble << ")" << endl;
-                cout << "🧩 Final cube state (for debugging): " << transformed_state << endl;
-
-                return;
-            }
-        }
-    }
-
-    cout << "\n❌ No solution found for scramble: " << scramble << endl;
-}
-
-
-
-
-void find_solution_with_extra_moves(const string& scramble, const string& search_filename, const vector<string>& moves){
-    // "normal" pruning variant:
-    /*find_solution_with_0_extra_moves(scramble, "all_five_move_scrambles_unique_states.txt");
-    find_solution_with_1_extra_move(scramble, "all_five_move_scrambles_unique_states.txt", moves);
-    find_solution_with_2_extra_moves(scramble, "all_five_move_scrambles_unique_states.txt", moves);
-    find_solution_with_3_extra_moves(scramble, "all_five_move_scrambles_unique_states.txt", moves);
-    find_solution_with_4_extra_moves(scramble, "all_five_move_scrambles_unique_states.txt", moves);*/
-
-    // "smartbranch" pruning variant:
-
-    find_solution_with_0_extra_moves(scramble, "derivation_5_to_6.txt");
-    find_solution_with_0_extra_moves(scramble, "derivation_6_to_7.txt");
-    find_solution_with_0_extra_moves(scramble, "derivation_7_to_8.txt");
-
-    find_solution_with_1_extra_move(scramble, "derivation_7_to_8.txt", moves);
-    find_solution_with_2_extra_moves(scramble, "derivation_7_to_8.txt", moves);
-    find_solution_with_3_extra_moves(scramble, "derivation_7_to_8.txt", moves);
-    cout << "==========================================";
-    solution_found = false;
-    //find_solution_with_4_extra_moves(scramble, "derivation_6_to_7.txt", moves);
-
-}
-
-
-
-
-
-
-
 // Main function
 int main() {
     auto start_time = high_resolution_clock::now();
@@ -1843,22 +1565,18 @@ int main() {
     depth_1_rotation_updater(filename);
     depth_2_updater(filename);
     depth_2_rotation_updater(filename);
-        cout << "✅ Total updated depth 2 states: " << updated_states2.size() << endl;
 
-    if (updated_states2.empty()) {
-    cout << "⚠️ Error: No depth 2 states available! Depth 3 cannot proceed." << endl;
-    
-}
     depth_3_updater(filename);
-    
     depth_3_rotation_updater(filename);
 
+    depth_4_updater(filename);    
+    depth_4_rotation_updater(filename);
 
 
-    // Save updated states for further processing
-    save_updated_states0("updated_states_depth_0.txt");
-    save_updated_states1("updated_states_depth_1.txt");
-    // discontinued this type of function
+    depth_5_updater(filename);
+    depth_6_updater(filename);
+    depth_7_updater(filename);
+
 
     auto end_time = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end_time - start_time);
