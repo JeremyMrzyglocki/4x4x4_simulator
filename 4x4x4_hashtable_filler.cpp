@@ -18,6 +18,9 @@ using namespace std::chrono;
 volatile bool solution_found = false;
 ofstream log_file("log.txt", ios::out); // Log file for all printed outputs
 
+const int MAX_MOVES = 20;
+int move_histogram[MAX_MOVES] = {0};
+
 // Function prototypes
 string fixLetterOrder(const string& combination);
 string letter_swap(string combination, char from, char to);
@@ -467,7 +470,7 @@ void depth_0_updater(const string &filename) {
     log_message("📁 Depth 0 states saved to updated_states_depth_0.txt");
 }
 
-
+/*
 void depth_1_updater(const string &filename) {
     log_message("\n🔄 Generating depth 1 states from updated depth 0 states...");
 
@@ -489,6 +492,8 @@ void depth_1_updater(const string &filename) {
     int move_counter = 0;
 
         for (const auto &state : updated_states_with_a) {
+        log_message("\n=== 🔹 Processing Depth 1 State (Batch " + to_string(batch_counter) + ") ===");
+        log_message("🔹 Original Depth 1 State: " + state);
 
             batch_counter++;
 
@@ -500,20 +505,20 @@ void depth_1_updater(const string &filename) {
 
                 // ✅ Compute canonical form
                 string canonical_state = get_canonical_rotation(new_state);
-                //log_message("🟢 Canonical form: " + canonical_state);
+                log_message("🟢 Canonical form: " + canonical_state);
 
                 // ✅ Extract without leading 'a'
                 string fixed_state = canonical_state.substr(1);
-                //log_message("🔵 Fixed canonical form: " + fixed_state);
+                log_message("🔵 Fixed canonical form: " + fixed_state);
                 
                 //if (is_already_flagged_or_mirrored(canonical_state, filename, 1, {{'a', 7}, {'b', 8}, {'c', 8}})) {
                 //    continue;  // Skip adding/flagging this state
                 //}
 
                 if (depth_1_states.find(fixed_state) == depth_1_states.end()) {
-                    //log_message("✅ New unique state added: " + fixed_state);
+                    log_message("✅ New unique state added: " + fixed_state);
                 } else {
-                    //log_message("⚠️ Duplicate state ignored: " + fixed_state);
+                    log_message("⚠️ Duplicate state ignored: " + fixed_state);
                 }
                 depth_1_states.insert(fixed_state);
             }
@@ -541,7 +546,82 @@ void depth_1_updater(const string &filename) {
     file.close();
     updated_states1 = depth_1_states; 
     log_message("\n📁 Depth 1 states saved to updated_states_depth_1.txt");
+}*/
+
+void depth_1_updater(const string &filename) {
+    log_message("\n🔄 [Depth 1] Starting generation from updated depth 0 states...");
+
+    vector<string> moves = {
+        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+        "U", "U2", "U'", "D", "D2", "D'",
+        "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", "Fw", "Fw2", "Fw'",
+        "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+    };
+
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> depth_1_states;
+
+    // Prepend 'a' to each state from depth 0
+    for (const auto &state : updated_states0) {
+        updated_states_with_a.insert("a" + state);
+    }
+
+    log_message("✅ [Depth 1] Total parent states to process: " + to_string(updated_states_with_a.size()));
+
+    int state_count = 0;
+    for (const auto &state : updated_states_with_a) {
+        ++state_count;
+        log_message("\n🌲 [State " + to_string(state_count) + "] Original: " + state);
+
+        int move_count = 0;
+        for (const string &move : moves) {
+            ++move_count;
+
+            log_message("  ├─ 🎯 Move " + to_string(move_count) + ": " + move);
+
+            string new_state = apply_move(state, move);
+            log_message("  │   ├─ 🧠 After Move: " + new_state);
+
+            string canonical_state = get_canonical_rotation(new_state);
+            log_message("  │   ├─ 🔄 Canonical: " + canonical_state);
+
+            string fixed_state = canonical_state.substr(1);
+            log_message("  │   ├─ ✂️  Fixed (w/o 'a'): " + fixed_state);
+
+            if (depth_1_states.find(fixed_state) == depth_1_states.end()) {
+                log_message("  │   └─ ✅ Added new unique state.");
+                depth_1_states.insert(fixed_state);
+            } else {
+                log_message("  │   └─ ⚠️ Already seen. Skipping.");
+            }
+        }
+    }
+
+    log_message("\n💾 Updating binary file with " + to_string(depth_1_states.size()) + " new depth 1 states...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : depth_1_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0001);
+    }
+
+    log_message("✅ [Depth 1] All states updated in file.");
+
+    // Save to disk
+    ofstream file("updated_states_depth_1.txt", ios::out);
+    if (!file) {
+        log_message("❌ Failed to open file: updated_states_depth_1.txt");
+        return;
+    }
+    for (const auto &state : depth_1_states) {
+        file << state << endl;
+    }
+    file.close();
+    updated_states1 = depth_1_states;
+
+    log_message("📁 [Depth 1] Saved to updated_states_depth_1.txt");
 }
+
 
 
 void depth_2_updater(const string &filename) {
@@ -2317,141 +2397,226 @@ pair<string, string> get_canonical_rotation_with_rotation(const string &cubestat
 
 
 
-// Recursive function to expand further layers until depth 0 is reached
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+string normalize_solution(const string& solution) {
+    map<string, map<char, char>> rotation_maps = {
+        {"x",  {{'U','F'}, {'F','D'}, {'D','B'}, {'B','U'}, {'L','L'}, {'R','R'}}},
+        {"x'",   {{'U','B'}, {'B','D'}, {'D','F'}, {'F','U'}, {'L','L'}, {'R','R'}}},
+        {"x2",  {{'U','D'}, {'D','U'}, {'F','B'}, {'B','F'}, {'L','L'}, {'R','R'}}},
+        {"y",  {{'F','R'}, {'R','B'}, {'B','L'}, {'L','F'}, {'U','U'}, {'D','D'}}},
+        {"y'",   {{'F','L'}, {'L','B'}, {'B','R'}, {'R','F'}, {'U','U'}, {'D','D'}}},
+        {"y2",  {{'F','B'}, {'B','F'}, {'L','R'}, {'R','L'}, {'U','U'}, {'D','D'}}},
+        {"z",  {{'U','L'}, {'L','D'}, {'D','R'}, {'R','U'}, {'F','F'}, {'B','B'}}},
+        {"z'",   {{'U','R'}, {'R','D'}, {'D','L'}, {'L','U'}, {'F','F'}, {'B','B'}}},
+        {"z2",  {{'U','D'}, {'D','U'}, {'L','R'}, {'R','L'}, {'F','F'}, {'B','B'}}}
+    };
+
+    // Tokenize input
+    istringstream iss(solution);
+    vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
+
+    // Result moves
+    vector<string> result;
+
+    // Identity map initially
+    map<char, char> current_map = {{'U','U'}, {'D','D'}, {'L','L'}, {'R','R'}, {'F','F'}, {'B','B'}};
+
+    // Compose rotation: current_map ∘ new_rotation
+    auto compose = [](map<char, char> a, const map<char, char>& b) {
+        map<char, char> result;
+        for (const auto& [face, mapped] : a) {
+            result[face] = b.count(mapped) ? b.at(mapped) : mapped;
+        }
+        return result;
+    };
+
+    for (const string& token : tokens) {
+        if (rotation_maps.count(token)) {
+            // Rotation: keep it in output, update the map for future moves
+            result.push_back(token);
+            current_map = compose(current_map, rotation_maps[token]);
+        } else {
+            // Move: apply current map
+            string base, suffix;
+            if (token.size() >= 2 && token[1] == 'w') {
+                base = token.substr(0, 2);  // e.g., Rw
+                suffix = token.substr(2);   // e.g., ', 2, ''
+            } else {
+                base = token.substr(0, 1);
+                suffix = token.substr(1);
+            }
+
+            char face = base[0];
+            char mapped = current_map[face];
+            base[0] = mapped;
+
+            result.push_back(base + suffix);
+        }
+    }
+
+    // Join moves
+    ostringstream oss;
+    for (const auto& move : result) oss << move << " ";
+    string output = oss.str();
+    if (!output.empty()) output.pop_back();
+    return output;
+}
+
+
+
+
 bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
                       const string &filename, uint32_t current_flag, 
                       map<char, int> &letter_counts, int depth, 
                       vector<vector<string>> &successful_paths) {
     
-    // Base case: If we've reached flag 0, a solution has been found
     if (current_flag == 0) {
-        log_message("\n🎯 Reached depth 0. Solution found!");
+        log_message("\n🎯 Reached depth 0. ✅ Solution found!");
         return true;
     }
 
-    // All possible moves for the puzzle — single, double, and prime turns + wide moves
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
+    vector<string> moves = {
+        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+    };
 
-    log_message("\n🌳 Expanding to depth " + to_string(depth) + " (Flag " + to_string(current_flag) + ")...");
+    //log_message("\n\n🌳 [Depth " + to_string(depth) + "] Expanding with Flag = " + to_string(current_flag));
+    //log_message("🌿 Number of parent states: " + to_string(parent_states.size()));
 
-    uint32_t new_min_flag = UINT32_MAX;  // Track smallest flag found at this depth
-    vector<tuple<string, vector<string>, vector<string>>> good_paths_next;  // Store promising states to go deeper on
+    uint32_t new_min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
 
-    // Iterate over all current parent states at this depth level
+    int parent_count = 0;
     for (const auto &[parent_state, history, rotation_history] : parent_states) {
-        log_message("\n🌲 Parent State: " + parent_state);
+        ++parent_count;
+        //log_message("\n🌲 Parent #" + to_string(parent_count) + ": " + parent_state);
+        //log_message("  ├─ Path so far: " + (history.empty() ? "(none)" : history.back()));
+        //log_message("  └─ Rotations: " + (rotation_history.empty() ? "(none)" : rotation_history.back()));
 
-        // Try all possible moves from this parent state
+        int move_index = 0;
         for (const string &move : moves) {
-            string new_state = "a" + parent_state; // Add 'a' to preserve length or maintain encoding compatibility
-            new_state = apply_move(new_state, move); // Apply move to current state
+            ++move_index;
+            //log_message("    ├─ 🔀 Move #" + to_string(move_index) + ": " + move);
 
-            // Normalize the state to its canonical form and track applied rotation
+            string new_state = "a" + parent_state;
+            new_state = apply_move(new_state, move);
+            //log_message("    │   ├─ State after move: " + new_state);
+
             auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
-            string fixed_state = canonical_state.substr(1);  // Remove the added 'a' to return to original format
+            string fixed_state = canonical_state.substr(1);
 
-            // Compute a unique index using multinomial ranking (based on the letter frequencies)
+            //log_message("    │   ├─ Canonical: " + canonical_state);
+            //log_message("    │   ├─ Applied Rotation: " + applied_rotation);
+            //log_message("    │   └─ Final fixed state: " + fixed_state);
+
             __uint128_t index = multinomial_rank(fixed_state, letter_counts);
 
-            // Load the flag from the binary file corresponding to this state index
             uint32_t flag = 0;
             ifstream input_file(filename, ios::binary);
             if (!input_file) {
                 log_message("❌ Error opening file: " + filename);
-                return false; // Exit on file read error
+                return false;
             }
 
-            streampos file_position = index * sizeof(uint32_t); // Calculate byte offset
+            streampos file_position = index * sizeof(uint32_t);
             input_file.seekg(file_position, ios::beg);
             input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
             input_file.close();
 
-            // Mask only the lowest 4 bits of the flag (this is where actual depth is encoded)
             uint32_t extracted_flag = flag & 0xF;
+            //log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
 
-            // Update minimum flag if smaller one is found; reset candidates
             if (extracted_flag < new_min_flag) {
+                //log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
                 new_min_flag = extracted_flag;
                 good_paths_next.clear();
             }
 
-            // If this state matches the current best flag, track it
             if (extracted_flag == new_min_flag) {
-                vector<string> new_history = history;
-                new_history.push_back(move);  // Record the move taken
+                //log_message("    │   ✅ Matching min flag, storing path.");
 
-                vector<string> new_rotation_history = rotation_history;
-                new_rotation_history.push_back(applied_rotation);  // Track the rotation applied
-
-                good_paths_next.push_back({fixed_state, new_history, new_rotation_history});
-            }
-
-            // If we've hit a goal state (flag == 0), build and store the solution path
-            if (extracted_flag == 0) {
-                vector<string> solution_path;
-
-                // Copy current move and rotation history
                 vector<string> new_history = history;
                 new_history.push_back(move);
 
                 vector<string> new_rotation_history = rotation_history;
                 new_rotation_history.push_back(applied_rotation);
 
-                // Build the full path as move → rotation pairs
+                good_paths_next.push_back({fixed_state, new_history, new_rotation_history});
+            }
+
+            if (extracted_flag == 0) {
+                //log_message("    🎉 FOUND GOAL STATE! Building solution path...");
+
+                vector<string> new_history = history;
+                new_history.push_back(move);
+
+                vector<string> new_rotation_history = rotation_history;
+                new_rotation_history.push_back(applied_rotation);
+
+                vector<string> solution_path;
                 for (size_t i = 0; i < new_history.size(); ++i) {
                     solution_path.push_back(new_history[i] + " → " + new_rotation_history[i]);
                 }
 
                 successful_paths.push_back(solution_path);
 
-                // Also build a compact final solution string for logging
                 string final_solution;
                 for (size_t i = 0; i < new_history.size(); ++i) {
                     final_solution += new_rotation_history[i] + " " + new_history[i] + " ";
                 }
-                final_solution.pop_back(); // Remove trailing space
+                final_solution.pop_back();
                 final_solution += " (depth=" + to_string(new_history.size()) + ")";
+
+                //log_message("    ✅ Final Solution: " + final_solution);
             }
         }
     }
 
-    // Log the best flag found at this level
-    log_message("\n✅ Minimum flag at depth " + to_string(depth) + ": " + to_string(new_min_flag));
-
-    // Recurse deeper using the good paths found
+    log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
     return recursive_expand(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths);
 }
 
+
 // Main function to solve a scramble using precomputed binary flags
-void solve_scramble(const string &scramble, const string &filename) {
+void solve_scramble(const string &scramble, const string &filename, bool print_only_first_solution = true) {
     log_message("\n🔍 Solving scramble: " + scramble);
 
-    // Step 1: Apply the scramble to the solved state
-    string solved_state = "aaaabbbbccccbbbbccccaaaa";  // Reference solved configuration
-    string scrambled_state = translate_scramble_to_moves(scramble);  // Apply scramble to get new state
+    string solved_state = "aaaabbbbccccbbbbccccaaaa";
+    string scrambled_state = translate_scramble_to_moves(scramble);
     log_message("\n🔄 Scrambled State: " + scrambled_state);
 
-    // Step 2: Generate all cube rotations and correct letter order for each
     vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
     vector<tuple<string, string, string>> all_rotations_for_this_scramble;
-    
+
     for (const string &rotation : rotations) {
-        string rotated_state = apply_move(scrambled_state, rotation);  // Rotate the scrambled state
-        string fixed_rotated_state = fixLetterOrder(rotated_state);    // Fix letter ordering for consistency
+        string rotated_state = apply_move(scrambled_state, rotation);
+        string fixed_rotated_state = fixLetterOrder(rotated_state);
         all_rotations_for_this_scramble.push_back({rotation, rotated_state, fixed_rotated_state});
     }
 
-    // Step 3: For each rotated version, compute its index and fetch corresponding flag
-    log_message("\n📜 All possible rotations and their states:");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};  // Letter frequency for multinomial ranking
-    
-    uint32_t min_flag = UINT32_MAX;  // Track minimum flag among all rotations
-    vector<tuple<string, vector<string>, vector<string>>> good_paths;  // States with best flag
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+    uint32_t min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths;
 
     for (const auto &[rotation, state, fixed_state] : all_rotations_for_this_scramble) {
-        string canonical_state = fixed_state.substr(1); // Remove leading 'a'
+        string canonical_state = fixed_state.substr(1);
         __uint128_t index = multinomial_rank(canonical_state, letter_counts);
 
         uint32_t flag = 0;
@@ -2468,7 +2633,6 @@ void solve_scramble(const string &scramble, const string &filename) {
 
         uint32_t extracted_flag = flag & 0xF;
 
-        // Track all equally optimal starting states
         if (extracted_flag < min_flag) {
             min_flag = extracted_flag;
             good_paths.clear();
@@ -2476,63 +2640,316 @@ void solve_scramble(const string &scramble, const string &filename) {
         if (extracted_flag == min_flag) {
             good_paths.push_back({canonical_state, {rotation}, {rotation}});
         }
-
-        // Output diagnostic info for this rotation
-        log_message("🔹 Rotation: " + rotation + 
-                    " | State: " + state + 
-                    " | Index: " + uint128_to_string(index) + 
-                    " | Flag: " + to_string(extracted_flag));
     }
 
-    // Step 4: Begin recursive expansion from best initial states
     vector<vector<string>> successful_paths;
     recursive_expand(good_paths, filename, min_flag, letter_counts, 1, successful_paths);
 
-    // Step 5: Print all successful solution sequences
     log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
+    bool first_solution_logged = false;
+
     for (const auto &path : successful_paths) {
         string formatted_solution = "";
         bool is_first_entry = true;
 
-        string initial_rotation = path[0].substr(0, 2);  // Extract initial rotation from path
+        string initial_rotation = path[0].substr(0, 2);
         formatted_solution = initial_rotation;
 
-        // Reconstruct the full path, skipping the first rotation (already applied)
         for (const auto &step : path) {
             size_t arrow_pos = step.find(" → ");
             if (arrow_pos != string::npos) {
-                string move = step.substr(0, arrow_pos);  // Extract move
-                string rotation = step.substr(arrow_pos + 4);  // Extract rotation
+                string move = step.substr(0, arrow_pos);
+                string rotation = step.substr(arrow_pos + 4);
 
                 if (is_first_entry) {
                     is_first_entry = false;
                 } else {
-                    formatted_solution += rotation + " " + move + " ";  // Output as "Rotation Move"
+                    formatted_solution += move + " " + rotation + " ";
                 }
             }
         }
 
         if (!formatted_solution.empty()) {
-            formatted_solution.pop_back(); // Trim trailing space
+            formatted_solution.pop_back();
         }
 
-        log_message("Final Solution: " + formatted_solution);
+        string adjusted_solution = normalize_solution(formatted_solution); // Optional
+
+        if (!print_only_first_solution || !first_solution_logged) {
+            log_message("Final Solution: " + formatted_solution);
+        }
+
+        if (!first_solution_logged) {
+            first_solution_logged = true;
+
+            // Count non-rotation moves
+            istringstream iss(formatted_solution);
+            int move_count = 0;
+            string token;
+            vector<string> rotation_prefixes = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+
+            while (iss >> token) {
+                if (find(rotation_prefixes.begin(), rotation_prefixes.end(), token) != rotation_prefixes.end()) {
+                    continue;
+                }
+                move_count++;
+            }
+
+            if (move_count >= MAX_MOVES) move_count = MAX_MOVES - 1;
+            move_histogram[move_count]++;
+        }
+
+        if (print_only_first_solution) {
+            break; // ✅ Stop after printing the first solution
+        }
+    }
+}
+
+
+bool recursive_expand_fast(
+    vector<tuple<string, vector<string>, vector<string>>> &parent_states,
+    const string &filename,
+    uint32_t current_flag,
+    map<char, int> &letter_counts,
+    int depth,
+    vector<vector<string>> &successful_paths,
+    bool only_first_solution,
+    unordered_set<string> &visited_states  // NEW
+) {
+    if (current_flag == 0) {
+        log_message("\n🎯 Reached depth 0. ✅ Solution found!");
+        return true;
+    }
+
+    vector<string> moves = {
+        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+    };
+
+    uint32_t new_min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
+
+    for (const auto &[parent_state, history, rotation_history] : parent_states) {
+        for (const string &move : moves) {
+            string new_state = "a" + parent_state;
+            new_state = apply_move(new_state, move);
+
+            auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
+            string fixed_state = canonical_state.substr(1);
+
+            // ✅ Skip already visited states
+            if (visited_states.count(fixed_state)) continue;
+            visited_states.insert(fixed_state);
+
+            __uint128_t index = multinomial_rank(fixed_state, letter_counts);
+
+            uint32_t flag = 0;
+            ifstream input_file(filename, ios::binary);
+            if (!input_file) {
+                log_message("❌ Error opening file: " + filename);
+                return false;
+            }
+
+            streampos file_position = index * sizeof(uint32_t);
+            input_file.seekg(file_position, ios::beg);
+            input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
+            input_file.close();
+
+            uint32_t extracted_flag = flag & 0xF;
+
+            if (extracted_flag < new_min_flag) {
+                new_min_flag = extracted_flag;
+                good_paths_next.clear();
+            }
+
+            if (extracted_flag == new_min_flag) {
+                vector<string> new_history = history;
+                new_history.push_back(move);
+
+                vector<string> new_rotation_history = rotation_history;
+                new_rotation_history.push_back(applied_rotation);
+
+                good_paths_next.push_back({fixed_state, new_history, new_rotation_history});
+
+                if (extracted_flag == 0) {
+                    vector<string> solution_path;
+                    for (size_t i = 0; i < new_history.size(); ++i) {
+                        solution_path.push_back(new_history[i] + " → " + new_rotation_history[i]);
+                    }
+                    successful_paths.push_back(solution_path);
+
+                    if (only_first_solution) return true;
+                }
+            }
+        }
+    }
+
+    log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
+
+    // ✅ At depth 15, allow full expansion; otherwise explore one path
+    if (only_first_solution && new_min_flag != 15 && !good_paths_next.empty()) {
+        vector<tuple<string, vector<string>, vector<string>>> single_path = { good_paths_next[0] };
+        return recursive_expand_fast(single_path, filename, new_min_flag, letter_counts, depth + 1, successful_paths, true, visited_states);
+    }
+
+    return recursive_expand_fast(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths, only_first_solution, visited_states);
+}
+void solve_scramble_fast(const string &scramble, const string &filename, bool print_only_first_solution = true) {
+    log_message("\n🔍 Solving scramble: " + scramble);
+
+    string solved_state = "aaaabbbbccccbbbbccccaaaa";
+    string scrambled_state = translate_scramble_to_moves(scramble);
+    log_message("\n🔄 Scrambled State: " + scrambled_state);
+
+    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+    vector<tuple<string, string, string>> all_rotations_for_this_scramble;
+
+    for (const string &rotation : rotations) {
+        string rotated_state = apply_move(scrambled_state, rotation);
+        string fixed_rotated_state = fixLetterOrder(rotated_state);
+        all_rotations_for_this_scramble.push_back({rotation, rotated_state, fixed_rotated_state});
+    }
+
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+    uint32_t min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths;
+
+    for (const auto &[rotation, state, fixed_state] : all_rotations_for_this_scramble) {
+        string canonical_state = fixed_state.substr(1);
+        __uint128_t index = multinomial_rank(canonical_state, letter_counts);
+
+        uint32_t flag = 0;
+        ifstream input_file(filename, ios::binary);
+        if (!input_file) {
+            log_message("❌ Error opening file: " + filename);
+            return;
+        }
+
+        streampos file_position = index * sizeof(uint32_t);
+        input_file.seekg(file_position, ios::beg);
+        input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
+        input_file.close();
+
+        uint32_t extracted_flag = flag & 0xF;
+
+        if (extracted_flag < min_flag) {
+            min_flag = extracted_flag;
+            good_paths.clear();
+        }
+        if (extracted_flag == min_flag) {
+            good_paths.push_back({canonical_state, {rotation}, {rotation}});
+        }
+    }
+
+    vector<vector<string>> successful_paths;
+    unordered_set<string> visited_states;
+    recursive_expand_fast(good_paths, filename, min_flag, letter_counts, 1, successful_paths, print_only_first_solution, visited_states);
+
+    log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
+    bool first_solution_logged = false;
+
+    for (const auto &path : successful_paths) {
+        string formatted_solution = "";
+        bool is_first_entry = true;
+        string initial_rotation = path[0].substr(0, 2);
+        formatted_solution = initial_rotation;
+
+        for (const auto &step : path) {
+            size_t arrow_pos = step.find(" → ");
+            if (arrow_pos != string::npos) {
+                string move = step.substr(0, arrow_pos);
+                string rotation = step.substr(arrow_pos + 4);
+                if (is_first_entry) {
+                    is_first_entry = false;
+                } else {
+                    formatted_solution += move + " " + rotation + " ";
+                }
+            }
+        }
+
+        if (!formatted_solution.empty()) {
+            formatted_solution.pop_back();
+        }
+
+        if (!print_only_first_solution || !first_solution_logged) {
+            log_message("Final Solution: " + formatted_solution);
+        }
+
+        if (!first_solution_logged) {
+            first_solution_logged = true;
+
+            // Count non-rotation moves
+            istringstream iss(formatted_solution);
+            int move_count = 0;
+            string token;
+            vector<string> rotation_prefixes = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+
+            while (iss >> token) {
+                if (find(rotation_prefixes.begin(), rotation_prefixes.end(), token) != rotation_prefixes.end()) {
+                    continue;
+                }
+                move_count++;
+            }
+
+            if (move_count >= MAX_MOVES) move_count = MAX_MOVES - 1;
+            move_histogram[move_count]++;
+        }
+
+        if (print_only_first_solution) break;
     }
 }
 
 
 
+void print_move_histogram() {
+    log_message("\n📊 Move Count Histogram:");
+    for (int i = 0; i < MAX_MOVES; ++i) {
+        if (move_histogram[i] > 0) {
+            cout << "Moves: " << i << " => " << move_histogram[i] << " times\n";
+        }
+    }
+}
+
+void solve_scrambles(const string &scramble_list_file, const string &binary_filename) {
+    ifstream infile(scramble_list_file);
+    if (!infile) {
+        cerr << "❌ Error opening scramble list file: " << scramble_list_file << endl;
+        return;
+    }
+
+    string line;
+    int scramble_count = 0;
+
+    while (getline(infile, line)) {
+        if (line.empty()) continue;  // Skip blank lines
+
+        scramble_count++;
+        log_message("\n\n=======================");
+        log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
+        log_message("=======================\n");
+
+        solve_scramble_fast(line, binary_filename);
+    }
+
+    infile.close();
+
+    log_message("\n✅ Finished solving " + to_string(scramble_count) + " scrambles.");
+    print_move_histogram();
+}
+
+
 // Main function
 int main() {
-    auto start_time = high_resolution_clock::now();
-    precompute_factorials();
-    vector<string> moves = {
-        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'", 
-        "U", "U2", "U'", "D", "D2", "D'", 
-        "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", 
-        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", 
-        "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
-    };
+   auto start_time = high_resolution_clock::now();
+   precompute_factorials();
+   vector<string> moves = {
+       "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'", 
+       "U", "U2", "U'", "D", "D2", "D'", 
+       "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", 
+       "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", 
+       "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+   };
 
 
 
@@ -2561,39 +2978,22 @@ int main() {
     //test_multinomial_rank("abbbaabccccabbaccccbbaa", {{'a', 7}, {'b', 8}, {'c', 8}});
 
     
-    string filename = "2100mio_mir.bin";
+    string filename = "2100mio_v4.bin";
     
-    binary_generator(0, 2100000000, "2100mio_mir.bin"); 
-    binary_viewer(filename, 100);
-    binary_viewer_last_n_entries(filename, 100);
-
+    binary_generator(0, 2100000000, "2100mio_v4.bin"); 
+    //binary_viewer(filename, 100);
+    //binary_viewer_last_n_entries(filename, 100);
 
     depth_0_updater(filename);
     depth_1_updater(filename);
     depth_2_updater(filename);
-    //depth_2_rotation_updater(filename);
-
     depth_3_updater(filename);
-    //depth_3_rotation_updater(filename);
-
-    depth_4_updater(filename);    
-    //depth_4_rotation_updater(filename);
-
-    depth_5_updater(filename);   
-    //depth_5_rotation_updater(filename);
-
+    depth_4_updater(filename);  
+    depth_5_updater(filename);  
     depth_6_updater(filename);
-    //depth_6_rotation_updater(filename);
-
     depth_7_updater(filename);
-    //depth_7_rotation_updater(filename);
-
-    depth_8_updater(filename);   
-    //depth_8_rotation_updater(filename);
- 
+    depth_8_updater(filename);
     depth_9_updater(filename);
-    //depth_9_rotation_updater(filename);
-
     depth_10_updater(filename);
     depth_11_updater(filename);
     depth_12_updater(filename);
@@ -2602,86 +3002,14 @@ int main() {
     //solve_scramble("B' Rw2 R' L2 F2 R' U2 Rw B L2 Fw' D2 F Uw' R' B2 D2 L B2 L U2 L' U' Fw' D R Fw2 F Uw2 F' Rw Fw2 B' L2 R' F' L2 Fw2 D' F'", filename);
     //solve_scramble("L' R Fw B F' D' R' Uw Fw' U' Uw L Rw D2 Rw' B2 Uw2 Fw' Rw2 L2 B Fw' F' Uw U' Rw2 L F2 L D' Fw D' L B2 D2 Rw' R Fw2 U' Uw' ", filename);
     //solve_scramble("B2 F' Fw R' U F Fw' Rw U' B' Uw2 U' Fw2 F' B L2 B L2 B2 D U' Fw B' Uw' F2 Rw2 F2 Uw' L D' R L2 U' L2 F U' R Rw' L2 U'", filename);
-    //solve_scramble("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", filename); // random scramble
+    ///solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", filename); // random scramble
     //solve_scramble("L2 D2 B' D2 L2 F2 B' R2 F' L2 U' D2 R2 L D F' L' D' F2 R2 Rw2 Fw2 R' U Rw2 D Fw2 L U2 B2 R2 D L' F Fw' U2 Fw2 R Uw' L2 F R' Fw Uw B L", filename); // 10 moves with current solver
-
     //solve_scramble("L2 Fw2 Uw L U2 F Fw2 Uw2 L2 F L F2 B D Fw2 U Uw F' B Rw2 F2 U' F' B2 L F U' R2 B' F' Fw2 D Uw2 R2 L Fw2 U B L Uw2 ", filename);
-    //solve_scramble("U2 L' U2 D2 F2 R F2 R' F2 U2 L' U' F' L D' R D' F2 B2 R Fw2 R Rw2 U' Fw2 D2 R' D' L' Fw2 U2 D' B' Uw2 L Fw Uw R' Rw' F2 U Uw2 Fw2 ", filename);
-    //solve_scramble("R B2 U2 R D2 R' D2 L D2 R2 U F2 R F' B L B D R B2 Fw2 Rw2 U2 L' Fw2 U Fw2 R B2 L' Rw2 Fw L2 B R' Fw' Rw' F U' R2 Fw Rw2 U2 L2 ", filename);
-    //solve_scramble("D' R2 B2 U B2 U2 R2 D' F2 U' B' L2 B2 L U' D2 R2 U' R' D Fw2 L Rw2 Uw2 R F2 U' R2 U2 Fw2 D2 Uw2 L' Fw D F' L' U Rw' Fw' Uw' F Rw B' R2 ", filename);
-    /*solve_scramble("U F2 R2 U' B2 U2 R2 D B2 U2 L2 F L' B' U' R' L2 B U D R Fw2 Uw2 R2 L F2 U' Rw2 F2 Fw2 D' L' U Fw' Uw2 L B2 U Rw' U2 B' Fw' Rw' U Uw R' ", filename);
-    solve_scramble("B2 U2 L2 D R2 D L2 F2 U' L2 U' R2 B' R2 D' L F U R U F Rw2 U Fw2 D2 Rw2 F' U' R2 F' Fw2 D' F2 D Rw B' D2 L' Rw Uw' R' Rw' U B' Uw' B2 ", filename);
-    solve_scramble("D2 R' U F2 D F2 B2 R2 U B2 D B U L F R2 U D F' R2 Rw2 U Fw2 U' D2 Rw2 B' L2 B2 D2 B Rw2 D2 R Rw B' Rw2 U2 R Fw2 U' Fw' U Fw2 Uw' F2 ", filename);
-    solve_scramble("D2 L2 F2 L2 F2 D R2 B2 U R2 D2 B U2 F D' F2 U' L D' F R2 Rw2 Fw2 L U R2 F2 Uw2 B2 L' D' Rw2 Uw2 R' Fw' L D2 F' Rw D2 Fw L2 D' Uw2 ", filename);
-    solve_scramble("B D2 B2 U2 L' D2 R' B2 R' F2 B2 R U' R2 F' D2 F' R U2 R Uw2 R Fw2 R D2 Uw2 Rw2 F2 Uw2 B L Fw2 D B Fw2 R Uw' L2 Uw' Fw Rw' F' Uw Rw2 ", filename);
-    solve_scramble("F2 U2 F2 U' R2 U' R2 F2 D' B2 U F2 L U2 L' U' R' F L D' Uw2 F' D' L2 B Uw2 B' Fw2 U L2 D Rw' D' B2 Rw2 D2 Rw' Fw' R Fw D' B Uw B' ", filename);
-    solve_scramble("U' R B2 D2 L2 D2 B U2 F' L2 F D2 F' U B L' D2 F B2 D Fw2 D L2 Uw2 Rw2 D2 Fw2 D' L' Fw2 R2 U' Fw R F2 B2 L2 Fw Uw' B2 R Fw' Rw F ", filename);
-    solve_scramble("L' D' R' B' L2 F' U F D' F2 D2 R D2 F2 R2 U2 R D2 R' Rw2 Uw2 Fw2 D2 L' U Uw2 R D2 B2 D' Fw R2 U' F' Fw' D' Rw Fw U2 F B Fw2 L ", filename);
-    solve_scramble("L' U2 D2 B2 U2 R F2 L' B2 D L F L B U' L2 B R B Rw2 B2 U' Uw2 F2 U2 Rw2 U' L U' R' B Rw2 Fw' L2 F2 Uw F' B2 Fw D2 L2 Uw Rw ", filename);
-    solve_scramble("B R2 D2 F' R2 B' U2 B' U2 L2 F' D' B' D R2 F2 L' D' R' F' Fw2 L U' Fw2 D' R' U2 B2 Fw2 L' D Uw2 B2 Fw' U2 R2 U Fw2 Rw' D2 Fw D B' Fw Rw U' ", filename);
-solve_scramble("D2 B2 L2 B2 U B2 L2 U D2 R2 U' D' F D L2 F2 L2 F R D' R Fw2 R2 Uw2 F2 U' Fw2 U L2 B' Uw2 L2 Uw2 Rw' Uw2 Rw2 B2 D2 Rw Fw' L Fw' D' R' Fw Uw' ", filename);
-solve_scramble("R2 L' U2 R2 U2 F L2 B D2 L2 F2 D2 B' U' B2 L' F' U L' D Rw2 Uw2 F Fw2 L' Uw2 F2 R L' Uw2 F Uw2 R Uw' Fw2 D' B D Uw Rw' D2 Fw' D' Rw' B2 ", filename);
-solve_scramble("B L F R2 F' R D2 F U R2 D' L2 D F2 U L2 D F2 L2 F Rw2 B' Fw2 Uw2 F2 R D2 F2 R Uw2 L D2 R' D Rw2 Uw Fw2 R L2 Rw B2 Fw2 Uw' Fw' D F' ", filename);
-solve_scramble("D2 B U2 R2 L2 F L2 F2 U2 L2 F' U F2 R' U' R2 U' D2 L' U2 F Fw2 U' F2 Uw2 B' Fw2 L2 Rw2 Uw2 L2 B' U' B' L U' Rw' U2 R' B Uw' Rw' Uw2 L D F2 Rw2 ", filename);
-solve_scramble("U' B R B2 L F2 L D2 R' L' B2 U D2 F L F' U B L' Fw2 L' U2 F2 Fw2 D2 R2 U Rw2 Fw2 D' Fw' R Fw2 D2 F2 Rw D2 B Rw' Uw F2 Uw' L2 ", filename);
-solve_scramble("L' U' F2 B2 L2 F2 B2 L2 D2 R' F2 R F2 B U R F B L D' Rw2 B U2 Rw2 U D' F' D' B2 Rw2 Fw2 D Rw' F Rw F B2 R Uw' Fw2 Rw' F' Uw2 L B' ", filename);
-solve_scramble("U2 F R2 D' B L F' D' R' B2 U F2 D L2 F2 L2 D B2 R2 U B2 Fw2 D' R L2 Uw2 Rw2 Fw2 R' D R2 B2 D' Fw' D' F L' U' Rw F2 Uw' F2 L Rw Uw' F' ", filename);
-solve_scramble("L2 B2 D B2 U' R2 D2 L2 D L D F' L' F2 R' U B R Rw2 U2 B' U' Uw2 B Fw2 D2 F D F' B Fw2 Rw D2 R' Rw' B' Uw Fw D2 Rw2 B' U2 Fw' ", filename);
-solve_scramble("B2 D2 B2 R2 B2 U' L2 D2 F2 U' B L B2 U2 F R' L U2 R2 Rw2 Uw2 F L B R2 L B' R' Uw2 B' D2 R2 Uw F U' Rw2 Uw2 Rw' Fw' Rw2 U' Uw Rw Uw2 ", filename);
-solve_scramble("B U R F' U2 D' R' U L' U' B2 D2 F2 U L2 U2 R2 B2 D Uw2 R Rw2 U L' U' D' B2 Fw2 R' U2 F' Fw2 Uw2 R' Fw' R Rw Uw' Fw' D' B2 Uw L' Rw ", filename);
-solve_scramble("F' U2 R2 D2 F2 D2 L' F2 B2 R' B2 U F' D2 R D' R' B2 R Fw2 R U' D2 L2 Uw2 Rw2 B2 Fw2 R U2 Fw D2 Fw' R2 D2 L' Uw Rw' F' Fw' D' Fw R' Rw2 ", filename);
-solve_scramble("F' L2 B2 L D2 L2 U2 R' U2 B2 U2 D2 B R' L2 B U' R U2 D F2 Fw2 R' Uw2 Rw2 U Rw2 U R' Fw2 R2 D' L B Fw L D' B D' Uw' F2 B Uw2 Rw' Uw F2 D ", filename);
-solve_scramble("B' U2 D2 R' B2 R F2 R U2 B2 R2 L' F2 B R2 L' F L2 U2 D' B' Fw2 Rw2 D Uw2 B2 L D' Rw2 Fw2 L2 D2 B' L Fw L U' Uw' F' B' L' Fw Uw Rw F2 ", filename);
-solve_scramble("L2 U2 F2 R' L' F2 D2 R F2 L B2 R' D L D B' L D2 F2 D' B2 Uw2 B2 L D Fw2 U2 L' Rw2 Uw2 Fw2 U F2 Fw' Uw2 F2 B Fw2 Uw F2 Uw Rw' D2 B L' U ", filename);
-solve_scramble("D2 L2 B2 U' F2 L2 D R2 U' R2 U F2 R' F' U2 L D2 B U D2 Rw2 D B U F Uw2 F' R2 U Rw2 U R2 Rw' B' Uw2 R B' Uw' F R2 Rw' F2 Rw2 Fw' ", filename);
-solve_scramble("L' U R2 D F2 D2 B2 D' R2 L2 D B2 D B' D2 L' U R' L' D2 Uw2 Fw2 D R2 L' Fw2 R' Fw2 U' F2 R' Uw2 L' F' Fw' R2 D R' Uw' L2 Rw F' Uw F' Fw L2 ", filename);
-solve_scramble("F' D2 L D' B2 D F R U' D2 B' R2 D2 F2 B' R2 L2 D2 B' R2 B2 Uw2 L' Rw2 Fw2 R' D R2 Fw2 L U2 D' B Fw2 L2 D Fw' R2 F U' Rw' Fw D' Fw Rw2 Uw ", filename);
-solve_scramble("L U B2 D' F2 D R2 D2 R2 B2 R2 D' R L2 D F2 R2 D F' L2 Fw2 L U' Fw2 D2 L Rw2 Uw2 L' D' R Uw2 Fw L2 U R F2 Uw' B' Rw' F Uw' B2 L' Fw2 ", filename);
-solve_scramble("U2 L U2 D' F2 B' R U D2 B2 L F2 L B2 D2 B2 R' F2 D2 R2 B Rw2 U' Fw2 D L D2 Fw2 L' Rw2 U2 R2 F2 R' Fw L B U D2 Fw L Uw' Rw D F2 Uw Rw ", filename);
-solve_scramble("U L D2 R' B2 D2 B2 D2 L2 F2 L' F2 R B' L' F' B' R2 D' F' L' Fw2 R' L U Fw2 L U2 L Fw2 R D2 R Fw U2 Fw' U F' Fw Rw' D2 Uw L' Fw Uw2 Rw ", filename);
-solve_scramble("B2 R B' U2 L2 U2 F2 U2 F' B' D2 B' D R' F2 U2 F' B' U Uw2 Fw2 L2 F Uw2 R2 Rw2 F R' L2 F' L Uw F2 D' Rw2 Fw2 Uw F' Fw' Uw L2 Fw' L2 U' ", filename);
-solve_scramble("F' D' B U F2 D B2 U R2 U B2 U2 L2 D' B D2 B2 R' F L' B' Fw2 Rw2 B' U' Rw2 D' Fw2 D2 F2 Rw2 B R2 Rw B2 Fw2 L U' R2 Fw D' Uw2 R Fw ", filename);
-solve_scramble("B2 L2 U' B' R' B' U' D2 F U2 D2 F B2 D2 B R' L2 F' Uw2 B D' Uw2 F' Rw2 Fw2 D2 F R2 L2 B' Rw U' F2 D Rw U Uw R2 Fw R' D2 R' F ", filename);
-solve_scramble("L2 U' L' D' F L' B D2 L' F2 B2 D' B2 D2 R2 U2 L2 D' F2 D Uw2 R B2 Uw2 Rw2 B U2 F2 L' D2 F R2 Uw F D2 B2 U2 Rw' Fw' Rw2 Uw2 B2 Fw U2 ", filename);
-solve_scramble("F' R' B L2 F L2 F' R2 U2 B2 L2 B' U' D2 F D L U B R B2 Uw2 Rw2 D R' F2 Rw2 Fw2 L' U2 B2 D' F Fw L Rw2 Fw' L Uw' L B R' Uw' R Uw' ", filename);
-solve_scramble("R2 B2 R2 B2 U2 L U2 R' F2 R2 F B' L D' L2 D' L' D B2 U Fw2 Uw2 F' L Fw2 U2 L' Uw2 Fw2 R U2 R2 U' Uw F' Uw' Rw2 B Rw' U Fw' R2 Uw' Fw2 ", filename);
-solve_scramble("R2 D' F2 U' L2 U F2 D2 L2 U' L2 F2 B L F' U' L' D' B2 R B Uw2 L Uw2 B Uw2 Fw2 R2 B' U2 F' L' F' D F B2 Fw2 Uw B' Fw R' Uw R2 F2 L Rw ", filename);
-solve_scramble("F U L B2 U F' R' B2 L2 F L2 U2 L2 D2 F' L2 B' D B2 Uw2 F R' Fw2 L' Rw2 U2 F' L Uw2 B Fw2 D2 Uw' F2 B2 L' Uw' F' U2 Rw D' Uw' Rw2 D ", filename);
-solve_scramble("B R' B2 R2 D2 F' U2 D2 F2 R2 F2 R F' B2 U L D R' U2 Rw2 Uw2 F2 U' Rw2 D' Uw2 B2 D' F' Rw2 U' B Rw F2 R2 Uw2 F B' R2 Uw L' Rw' Uw' F ", filename);
-solve_scramble("D' L D2 R2 F2 U2 D2 R2 F U2 R2 B' R' L' U' R F2 U D Uw2 F' Fw2 U R2 D' Uw2 R2 B D2 B' Fw2 L Rw' B' Rw2 D' Fw R2 Uw' F' D2 Rw2 Fw' ", filename);
-solve_scramble("B2 R U2 R D2 R2 U2 D2 L' U2 L B D' B2 U F' U2 F L D' L2 Rw2 B2 U' Uw2 L B2 L F2 Rw2 Fw2 D' F2 L2 Fw' L' Fw2 D R2 Fw' U' Uw' F2 Uw2 Rw' B' Uw' ", filename);
-solve_scramble("F' L' B2 U' R2 U R2 D R2 U L2 F2 U2 F2 L U2 B' R F' R' B Rw2 F' Fw2 L2 Uw2 B Rw2 D' Rw2 F2 R2 L2 Rw' F' R2 U2 Rw' B Fw D' L2 U' Uw' R2 ", filename);
-solve_scramble("L' B D2 L D2 R2 D2 F2 L U2 F2 B2 R B2 U L2 D F' D2 R' D2 Rw2 F Fw2 U F2 L2 Fw2 Rw2 B D Fw2 U' F' Rw U' L' U' Fw' Uw2 Fw' Uw Fw Rw ", filename);
-solve_scramble("B2 D R2 F2 U' L2 F2 U' R2 D2 B D2 B' L' F' B2 U B L U Fw2 R B2 Fw2 D' F2 Fw2 Rw2 D2 Uw2 L B2 U' Fw' L D2 F2 L2 Rw Fw' L Rw2 U2 Fw2 L Rw ", filename);
-solve_scramble("D L' F L F' U' R' B' U F2 D B2 L2 U L2 F2 R2 U D2 R Rw2 F' R2 Uw2 L2 U B L2 Rw2 U' F Uw2 L2 Rw F Fw2 Rw F' Rw Fw' D L2 Uw Fw U L2 ", filename);
-solve_scramble("B L2 U2 L U2 D2 R D2 F2 D2 L2 U F U' D2 R2 F' D R' Uw2 F2 R F2 U Fw2 D B2 R Rw2 D Fw2 U' Fw U L2 B2 Rw Uw' B' Fw L' D2 F B2 ", filename);
-solve_scramble("D R L2 F2 D L2 B2 D' F2 U D2 B2 U F2 L' U F' B2 U' L2 F Uw2 R F2 Uw2 B' R D2 Uw2 B2 L B Uw2 F2 Uw F L' Rw2 Fw2 L' Fw Rw2 Uw F Uw F2 U' ", filename);
-solve_scramble("R2 B D2 L2 F' B' R2 B D2 R2 L2 F U L F2 L' D2 F' R' D B Fw2 D Uw2 L2 B' L2 Rw2 B2 R2 L2 U' R Rw2 U' Rw' U F Rw2 U2 Rw Fw U2 Fw2 L Uw2 ", filename);
-solve_scramble("D' R2 B2 R B2 R' U2 L B2 L' B2 R' B' D' R' B U' R2 U' B D' Fw2 R' Fw2 U2 D' Fw2 U Fw2 L' Uw2 L2 B2 Fw' Rw2 D' Fw' U' R B D' Rw' Fw' Rw B' L U' ", filename);
-solve_scramble("L2 F' L2 F2 B2 L' F2 B2 L' B2 L B2 D2 R2 B U2 R' D L' U' F' Rw2 U Fw2 L' Uw2 Rw2 F2 D' R2 U' R D2 Fw' Rw2 D Fw2 R' F2 Rw U' B' Uw' Rw' B' Uw' ", filename);
-solve_scramble("B' D2 F2 B U2 L2 F' U2 D2 B' L2 D' L' F' R2 B2 D' B' U' F R Rw2 B Uw2 Fw2 Rw2 F' R Fw2 R2 Fw2 L F Uw R' Rw2 Uw' F2 U F2 D' Fw' L' Rw' U Uw2 B ", filename);
-solve_scramble("U R2 L2 U2 D' F2 D F2 D' F2 B R' F2 L B' U' D2 B Uw2 B U2 Uw2 Rw2 F' L2 U' D' Uw2 Rw2 F D Rw' U' F' U2 F2 D2 Fw' D Rw Fw' L' Fw2 ", filename);
-solve_scramble("L2 D2 F2 L2 U2 B L2 F' R2 B D2 R2 U F' B R F B2 R F' L' Rw2 Uw2 R B' Fw2 U2 F Fw2 R2 Rw2 Uw2 R' D Fw2 U B Uw' L2 Rw F Uw' R' Rw U2 Uw ", filename);
-solve_scramble("L' U2 R' D2 F2 R' D2 R' L2 F B2 U2 F U B' L' F B D L Uw2 Rw2 D' Fw2 L' U2 D R Fw2 U' Fw2 D' F Fw' R' U2 F2 Rw D Fw U2 Uw Rw2 D' ", filename);
-solve_scramble("D2 F U2 B' R2 D2 L2 B' U2 L2 B D' R' U2 F' D' B R2 U L2 Uw2 L' Uw2 R D2 Rw2 D' F2 D2 Fw2 R U' B U2 Fw' R2 U2 Fw2 D2 Uw R2 Rw' Uw2 Fw R' ", filename);
-solve_scramble("R' F D2 L2 U' L2 U' B2 U2 D R2 F2 B U R' D' L2 F U' R Rw2 Fw2 R U Fw2 L' U2 Fw2 R U R2 U' R' Fw Rw2 B D' F2 R' Rw' D Fw D R' Fw Rw ", filename);
-solve_scramble("U R F2 L F2 R2 U2 L' F2 U2 R D2 F' R F2 U' D2 R F B2 Uw2 B Uw2 F' R2 Fw2 U' Rw2 U F2 Fw2 U L D' B2 Rw' F U Fw Rw' D' Uw2 F' Rw' U ", filename);
-solve_scramble("L D2 B2 U2 L2 D2 R2 B2 L' D2 B2 R' D R F D L2 U R B' L Fw2 R U Fw2 Uw2 F2 U F2 Fw2 D L' Fw L2 F L2 F R Uw L' Rw' Fw2 U2 Uw L' ", filename);
-solve_scramble("R U B2 U2 D2 B L2 F' D2 F' U2 F2 D2 F' R F' L' D B2 R B' Rw2 F Fw2 L2 Uw2 L2 B Fw2 U' Rw2 U B' Rw' Uw2 L2 U2 B2 D Fw U Rw2 Fw2 U' Uw' B ", filename);
-solve_scramble("R2 D' L2 U2 L2 D F2 R2 F2 B2 U' L F L B' D' F R' F2 L' Fw2 Uw2 L B2 U' Fw2 Rw2 D R L F2 D2 B' Uw2 F2 Fw' L2 Rw' D2 F Uw Fw' Uw' Rw F2 ", filename);
-solve_scramble("L' D' L B2 U B2 R F2 D' B R2 U2 F D2 B2 L2 B R2 B D2 F2 Fw2 L' Uw2 F2 Uw2 Rw2 B' R Fw2 R B2 D2 B Uw Rw2 U2 R' B2 U2 Fw Uw L B2 Fw2 R2 L ", filename);
-solve_scramble("F' R' B' R2 D B U F U' L U2 D2 L U2 L' D2 B2 R' B2 R' Fw2 R' U Uw2 Rw2 F2 U' L2 U' B2 Fw2 L F2 Fw' D2 F' Fw Rw' F' U2 Fw D2 B' Fw Rw2 ", filename);
-solve_scramble("D2 B R B2 L' U B D B2 L2 B' D2 R2 L2 F' R2 B R2 U2 B2 R Uw2 B Fw2 L' B L' Rw2 Fw2 R' F Uw2 L2 Fw2 Uw R L2 U2 L2 Rw Fw L' Uw Rw D' Fw2 U ", filename);
-solve_scramble("R F2 R B2 D2 R' U2 L' B2 R U2 L D' L' U' R U' L2 B' L U' Fw2 R U Rw2 Uw2 R2 D2 B2 Uw2 F2 L' F' Uw2 Fw D B2 Rw2 Fw' Uw Fw L Fw Rw' Fw ", filename);
-solve_scramble("B' R2 F2 R U B' L B U2 R' D2 L B2 R' L' F2 D2 B2 U Fw2 R' Rw2 Uw2 F2 B Fw2 U2 Fw2 R' Uw2 F' Uw F2 Uw Fw2 D' Rw' D2 Fw L2 F2 Rw D2 ", filename);
-solve_scramble("U2 R' B2 R' U2 D2 R F2 L D2 L' B2 U L' B D2 R U' F U2 B Uw2 R' U' Uw2 L' U Rw2 U R' Fw2 R B' Fw' R' U2 L' Rw F' Uw' R' U' Rw' F Uw ", filename);
-solve_scramble("U' F2 D F2 B2 L2 U2 D L2 B2 R L2 U2 L B L2 F D L2 B L2 Rw2 D R2 Fw2 D2 L' Fw2 U F2 L D R' L' Fw' D' R L2 Fw2 Uw' L' U Rw Fw2 U Rw ", filename);
-solve_scramble("L F2 U2 L2 B2 R' B2 R' U2 B2 L' B2 D F B2 D' R2 F L2 F' R' Rw2 Uw2 F' U2 Fw2 Uw2 L F2 U2 L' F Rw2 F' D' Uw L2 F' R2 F' Rw' U' Rw2 D' Uw' Rw B2 ", filename);
-solve_scramble("F2 U' L B' R D2 B2 U' F' R U2 R' U2 L D2 B2 L2 F2 L' B2 Fw2 R' Rw2 Uw2 Fw2 D2 B' R B' Rw2 D2 F D' Uw' R2 B Uw2 Fw L' Uw F D2 R2 D' ", filename);
-solve_scramble("L2 U2 L2 F U2 B2 D2 L2 F D2 F' B' L' F R U B D R2 U' B Uw2 Fw2 U' D2 R2 B' L2 U' Rw2 B U Uw2 B2 Rw' D' Fw2 R F2 Rw' Uw F R L2 Fw2 R' Rw ", filename);
-solve_scramble("L' U2 F2 D2 F L2 F' B2 R2 D2 F R2 D' R F' R' B D2 L F' Uw2 R2 Rw2 D R2 L' F2 D' Rw2 D' Rw2 Uw2 L2 B' R' Rw2 D Fw' Uw' F2 D R' Rw' B' Uw' ", filename);
-solve_scramble("B' R2 L F2 R2 F2 U2 R B2 R2 F2 B' U' L' F2 D R D2 R L Fw2 D Rw2 U' R2 F2 Uw2 F2 L Fw2 L U2 D2 Fw' L2 U2 Fw U' R2 Uw' R D2 Rw2 Fw Rw ", filename);*/
 
+
+    //solve_scramble("L2 U' F2 R2 U F2 U' L2 U F' B2 R D L' U R B' R D' L Uw2 L Rw2 D' B2 U Rw2 U' Uw2 L2 Uw2 Fw' U2 F L' F2 R2 Uw' L' Fw' Uw2 Fw R D2 Uw2", filename, 0);
+    //solve_scrambles("scrambles.txt", filename);
+    
 
     auto end_time = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end_time - start_time);
@@ -2690,3 +3018,4 @@ solve_scramble("B' R2 L F2 R2 F2 U2 R B2 R2 F2 B' U' L' F2 D R D2 R L Fw2 D Rw2 
     log_file.close(); // Close log file
     return 0;
 }
+
