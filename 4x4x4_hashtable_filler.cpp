@@ -707,38 +707,8 @@ void depth_2_updater(const string &filename) {
 
 
 
-void depth_2_rotation_updater(const string &filename) {
-    log_message("\nApplying all possible rotations to updated states from depth 2...");
 
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
 
-    // Prepend 'a' to each state in updated_states1 (which now contains depth 2 states)
-    for (const auto &state : updated_states1) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            log_message("Rotation: " + rotation + " | Resulting State: " + rotated_state + " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    log_message("\nUpdating rotated depth 2 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0010);
-    }
-    
-    log_message("\nRotation-based depth 2 updates completed!");
-}
 
 
 void depth_3_updater(const string &filename) {
@@ -1586,7 +1556,45 @@ void depth_13_updater(const string &filename) {
     log_message("\n📁 Depth 13 states saved to updated_states_depth_13.txt");
 }
 
-// === Depth 3 Rotation Updater ===
+
+
+
+// ROTATION-UPDATERS (Not needed anymore (probably))
+
+void depth_2_rotation_updater(const string &filename) {
+    log_message("\nApplying all possible rotations to updated states from depth 2...");
+
+    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+    unordered_set<string> updated_states_with_a;
+    unordered_set<string> rotated_states;
+
+    // Prepend 'a' to each state in updated_states1 (which now contains depth 2 states)
+    for (const auto &state : updated_states1) {
+        updated_states_with_a.insert("a" + state);
+    }
+
+    for (const auto &state : updated_states_with_a) {
+        for (const string &rotation : rotations) {
+            string rotated_state = apply_move(state, rotation);
+            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
+            rotated_states.insert(fixed_rotated_state);
+
+            log_message("Rotation: " + rotation + " | Resulting State: " + rotated_state + " | Fixed: " + fixed_rotated_state);
+        }
+    }
+
+    log_message("\nUpdating rotated depth 2 states in binary file...");
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+
+    for (const auto &state : rotated_states) {
+        __uint128_t index = multinomial_rank(state, letter_counts);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0010);
+    }
+    
+    log_message("\nRotation-based depth 2 updates completed!");
+}
+
+
 void depth_3_rotation_updater(const string &filename) {
     log_message("\n🔄 Applying all possible rotations to updated depth 3 states...");
 
@@ -2980,35 +2988,35 @@ int main() {
     
     string filename = "2100mio_v4.bin";
     
-    binary_generator(0, 2100000000, "2100mio_v4.bin"); 
+    //binary_generator(0, 2100000000, "2100mio_v4.bin"); 
     //binary_viewer(filename, 100);
     //binary_viewer_last_n_entries(filename, 100);
 
-    depth_0_updater(filename);
-    depth_1_updater(filename);
-    depth_2_updater(filename);
-    depth_3_updater(filename);
-    depth_4_updater(filename);  
-    depth_5_updater(filename);  
-    depth_6_updater(filename);
-    depth_7_updater(filename);
-    depth_8_updater(filename);
-    depth_9_updater(filename);
-    depth_10_updater(filename);
-    depth_11_updater(filename);
-    depth_12_updater(filename);
+    //depth_0_updater(filename);
+    //depth_1_updater(filename);
+    //depth_2_updater(filename);
+    //depth_3_updater(filename);
+    //depth_4_updater(filename);  
+    //depth_5_updater(filename);  
+    //depth_6_updater(filename);
+    //depth_7_updater(filename);
+    //depth_8_updater(filename);
+    //depth_9_updater(filename);
+    //depth_10_updater(filename);
+    //depth_11_updater(filename);
+    //depth_12_updater(filename);
 
 
-    //solve_scramble("B' Rw2 R' L2 F2 R' U2 Rw B L2 Fw' D2 F Uw' R' B2 D2 L B2 L U2 L' U' Fw' D R Fw2 F Uw2 F' Rw Fw2 B' L2 R' F' L2 Fw2 D' F'", filename);
-    //solve_scramble("L' R Fw B F' D' R' Uw Fw' U' Uw L Rw D2 Rw' B2 Uw2 Fw' Rw2 L2 B Fw' F' Uw U' Rw2 L F2 L D' Fw D' L B2 D2 Rw' R Fw2 U' Uw' ", filename);
-    //solve_scramble("B2 F' Fw R' U F Fw' Rw U' B' Uw2 U' Fw2 F' B L2 B L2 B2 D U' Fw B' Uw' F2 Rw2 F2 Uw' L D' R L2 U' L2 F U' R Rw' L2 U'", filename);
-    ///solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", filename); // random scramble
-    //solve_scramble("L2 D2 B' D2 L2 F2 B' R2 F' L2 U' D2 R2 L D F' L' D' F2 R2 Rw2 Fw2 R' U Rw2 D Fw2 L U2 B2 R2 D L' F Fw' U2 Fw2 R Uw' L2 F R' Fw Uw B L", filename); // 10 moves with current solver
-    //solve_scramble("L2 Fw2 Uw L U2 F Fw2 Uw2 L2 F L F2 B D Fw2 U Uw F' B Rw2 F2 U' F' B2 L F U' R2 B' F' Fw2 D Uw2 R2 L Fw2 U B L Uw2 ", filename);
+    //solve_scramble("B' Rw2 R' L2 F2 R' U2 Rw B L2 Fw' D2 F Uw' R' B2 D2 L B2 L U2 L' U' Fw' D R Fw2 F Uw2 F' Rw Fw2 B' L2 R' F' L2 Fw2 D' F'", filename, 0);
+    //solve_scramble("L' R Fw B F' D' R' Uw Fw' U' Uw L Rw D2 Rw' B2 Uw2 Fw' Rw2 L2 B Fw' F' Uw U' Rw2 L F2 L D' Fw D' L B2 D2 Rw' R Fw2 U' Uw' ", filename, 0);
+    //solve_scramble("B2 F' Fw R' U F Fw' Rw U' B' Uw2 U' Fw2 F' B L2 B L2 B2 D U' Fw B' Uw' F2 Rw2 F2 Uw' L D' R L2 U' L2 F U' R Rw' L2 U'", filename, 0);
+    ///solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", filename, 0); // random scramble
+    //solve_scramble("L2 D2 B' D2 L2 F2 B' R2 F' L2 U' D2 R2 L D F' L' D' F2 R2 Rw2 Fw2 R' U Rw2 D Fw2 L U2 B2 R2 D L' F Fw' U2 Fw2 R Uw' L2 F R' Fw Uw B L", filename, 0); // 10 moves with current solver
+    //solve_scramble("L2 Fw2 Uw L U2 F Fw2 Uw2 L2 F L F2 B D Fw2 U Uw F' B Rw2 F2 U' F' B2 L F U' R2 B' F' Fw2 D Uw2 R2 L Fw2 U B L Uw2 ", filename, 0);
 
 
     //solve_scramble("L2 U' F2 R2 U F2 U' L2 U F' B2 R D L' U R B' R D' L Uw2 L Rw2 D' B2 U Rw2 U' Uw2 L2 Uw2 Fw' U2 F L' F2 R2 Uw' L' Fw' Uw2 Fw R D2 Uw2", filename, 0);
-    //solve_scrambles("scrambles.txt", filename);
+    solve_scrambles("scrambles.txt", filename);
     
 
     auto end_time = high_resolution_clock::now();
