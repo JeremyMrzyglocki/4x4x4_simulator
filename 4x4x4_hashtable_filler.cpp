@@ -11,11 +11,16 @@
 #include <numeric>
 #include <unordered_map>
 
+/*
+BE AWARE. Spaghetti-code and typo-rich documentation ahead! 
+
+(At least it's functional)
+
+*/
 
 using namespace std;
 using namespace std::chrono; 
 
-volatile bool solution_found = false;
 ofstream log_file("log.txt", ios::out); // Log file for all printed outputs
 
 const int MAX_MOVES = 20;
@@ -113,14 +118,6 @@ unordered_set<string> updated_states12;
 unordered_set<string> updated_states13;  
 
 
-
-
-
-
-
-// Store logarithms of factorials to prevent overflow
-vector<double> log_factorial_cache(25, 0.0);
-
 // Precompute factorials for fast lookup (128-bit)
 vector<__uint128_t> factorial_cache(25, 1);
 void precompute_factorials() {
@@ -202,22 +199,10 @@ bool is_already_flagged_or_mirrored(const string &canonical_state, const string 
             return true;  // One of the mirrored states is already flagged with equal or lower depth
         }
     }
-
     return false;
 }
 
-
-// Debug function for detailed output
-void test_multinomial_rank(const string &input_str, map<char, int> letter_counts) {
-    cout << "Processing string: " << input_str << endl;
-    unsigned long long rank = multinomial_rank(input_str, letter_counts);
-    cout << "Final computed rank: " << rank << endl;
-}
-
-// Function to convert a number to a zero-padded binary string of fixed length
-string to_binary_string(__uint128_t value, int bit_length) {
-    return bitset<31>(static_cast<uint32_t>(value)).to_string();
-}
+// not used anymore. It was good for checking whether the bin-file access worked.
 void find_in_bin_file(const string &input_string, const string &filename) {
     // Compute multinomial rank
     map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
@@ -271,6 +256,7 @@ void find_in_bin_file(const string &input_string, const string &filename) {
 }
 
 
+// this function is needed because the two editors / VSC-extensions for opening .bin-files that I had tried, were not good. So I inserted a "reader"-function.
 void binary_viewer(const string &filename, int num_entries) {
     ifstream input_file(filename, ios::binary);
     if (!input_file) {
@@ -301,6 +287,8 @@ void binary_viewer(const string &filename, int num_entries) {
     input_file.close();
 }
 
+// same thing as above but for the last entries. However, reading the end of the file is somewhat useless at this point, because the look-up-table that I generate has
+// 2100 mio entries, while the last reachable HTR-C-cubestate in my introduced notation-system is at about 2050mio. I had included the rest as a buffer. (should fix that later, now that I think about it)
 void binary_viewer_last_n_entries(const string &filename, int num_entries) {
     ifstream input_file(filename, ios::binary);
     if (!input_file) {
@@ -351,7 +339,8 @@ void binary_viewer_last_n_entries(const string &filename, int num_entries) {
 
 
 // Function to update flag in binary file at a specific index
-// Function to update flag in binary file at a specific index
+// With "Flags", I am refering the depth that has been found. As I hypothesize God's Number being at about 12, there are three states left, that can be expressed
+// by 4 bits. 1111=15, right now stand for "uninitialized".
 void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_flag) {
     const int bit_length_1 = 31;  // Number of bits for value
     const int bit_length_2 = 4;   // Number of bits for flag
@@ -382,6 +371,7 @@ void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_fl
 
     
     stringstream log_info;
+
     //log_info << "Hashindex: " << index
     //    << " | Binary: " << bitset<31>(value_part).to_string()
     //    << " | Current Flag: " << bitset<4>(current_flag).to_string()
@@ -420,7 +410,7 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
     int bit_length_2 = 4;   // 4 bits reserved for flags
     int total_bits = bit_length_1 + bit_length_2; // 35 bits total
 
-    cout << "Using " << total_bits << " bits per number ("
+    cout << "Using " << total_bits << " bits per entry ("
          << bit_length_1 << " for value, " << bit_length_2 << " for flags)." << endl;
     
     for (__uint128_t i = start_val; i <= end_val; ++i) {
@@ -440,7 +430,12 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
 }
 
 
+
+
+
 // DEPTHS 0-13
+
+// here is where the fun part begins
 
 // Function to update depth 0: Flag starting state with 0000
 void depth_0_updater(const string &filename) {
@@ -469,84 +464,6 @@ void depth_0_updater(const string &filename) {
     file.close();
     log_message("📁 Depth 0 states saved to updated_states_depth_0.txt");
 }
-
-/*
-void depth_1_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 1 states from updated depth 0 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_1_states;
-
-    // Prepend 'a' to each state in updated_states2
-    for (const auto &state : updated_states0) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 0 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-        for (const auto &state : updated_states_with_a) {
-        log_message("\n=== 🔹 Processing Depth 1 State (Batch " + to_string(batch_counter) + ") ===");
-        log_message("🔹 Original Depth 1 State: " + state);
-
-            batch_counter++;
-
-            for (const string &move : moves) {
-                move_counter++;
-
-                // ✅ Apply move
-                string new_state = apply_move(state, move);
-
-                // ✅ Compute canonical form
-                string canonical_state = get_canonical_rotation(new_state);
-                log_message("🟢 Canonical form: " + canonical_state);
-
-                // ✅ Extract without leading 'a'
-                string fixed_state = canonical_state.substr(1);
-                log_message("🔵 Fixed canonical form: " + fixed_state);
-                
-                //if (is_already_flagged_or_mirrored(canonical_state, filename, 1, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-                //    continue;  // Skip adding/flagging this state
-                //}
-
-                if (depth_1_states.find(fixed_state) == depth_1_states.end()) {
-                    log_message("✅ New unique state added: " + fixed_state);
-                } else {
-                    log_message("⚠️ Duplicate state ignored: " + fixed_state);
-                }
-                depth_1_states.insert(fixed_state);
-            }
-        }
-
-    log_message("\n🔄 Updating " + to_string(depth_1_states.size()) + " depth 1 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_1_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0001);
-    }
-
-    log_message("\n✅ Depth 1 state generation and update completed!");
-
-    // Save the new depth 1 states for future processing
-    ofstream file("updated_states_depth_1.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_1.txt");
-        return;
-    }
-    for (const auto &state : depth_1_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states1 = depth_1_states; 
-    log_message("\n📁 Depth 1 states saved to updated_states_depth_1.txt");
-}*/
 
 void depth_1_updater(const string &filename) {
     log_message("\n🔄 [Depth 1] Starting generation from updated depth 0 states...");
@@ -621,8 +538,6 @@ void depth_1_updater(const string &filename) {
 
     log_message("📁 [Depth 1] Saved to updated_states_depth_1.txt");
 }
-
-
 
 void depth_2_updater(const string &filename) {
     log_message("\n🔄 Generating depth 2 states from updated depth 1 states...");
@@ -1837,7 +1752,6 @@ void depth_9_rotation_updater(const string &filename) {
 }
 
 
-
 // 
 // Cubestate-changing functions
 //
@@ -1935,7 +1849,7 @@ string translate_scramble_to_moves(const string& scramble) {
     return current_state;
 }
 
-// Function to fix letter order
+// Function to fix letter order, very important function
 string fixLetterOrder(const string& combination) {
     string combination_updated = combination;
     if (combination_updated[0] != 'a') {
@@ -2082,6 +1996,10 @@ string z3_rotation(const string& combination) { // Perform z3_rotation (z_rotati
     return z_rotation(z2_rotation(combination));
 }
 
+
+// I did introduce mirrors here, but they are only used in my version 1 solver. Here, I made some experiments and while adding them reduces the states in each depth
+// by 10% (not scaling exponentially sadly), it is also 4x-ing the amount of time needed to update the lookup-table. I will not use mirror-symetry as of right now.
+
 string m_mirror(const string& combination) {
     string combination_new = combination;
 
@@ -2161,7 +2079,7 @@ string R3(const string& combination) { // Perform R3 (R applied three times)
     return R(R2(combination));
 }
 
-//note that uncapitalized r is not a slice move, but equivalent to Rw in some literature. This applies to all uncapiatlized moves
+//note that uncapitalized r is not a slice move, but equivalent to Rw in some literature. This applies to all uncapiatalized moves
 
 string r(const string& combination) {
     string combination_new = combination;
@@ -2222,11 +2140,11 @@ string F(const string& combination) {
 }
 
 string F2(const string& combination) {
-    string combination_new = F(combination);  // First transformation
-    return F(combination_new);               // Apply F again and return
+    string combination_new = F(combination);
+    return F(combination_new);               
 }
 
-string F3(const string& combination) { // Perform F3 (F applied three times)
+string F3(const string& combination) { 
     return F(F2(combination));
 }
 
@@ -2350,7 +2268,8 @@ string d3(const string& combination) {
 }
 
 
-// Function to generate move-group restrictions
+// Function to generate move-group restrictions. This was used in the version_1 solver to not perform move-sequences like "R R' R2". I could also add
+// this kind of filtering in this version_2 solver
 map<string, vector<string>> get_move_groups() {
     return {
         {"R", {"R", "R2", "R'"}}, {"R2", {"R", "R2", "R'"}}, {"R'", {"R", "R2", "R'"}},
@@ -2402,9 +2321,6 @@ pair<string, string> get_canonical_rotation_with_rotation(const string &cubestat
 
     return {best_state, best_rotation};
 }
-
-
-
 
 
 
@@ -2505,8 +2421,8 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
         "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
     };
 
-    //log_message("\n\n🌳 [Depth " + to_string(depth) + "] Expanding with Flag = " + to_string(current_flag));
-    //log_message("🌿 Number of parent states: " + to_string(parent_states.size()));
+    log_message("\n\n🌳 [Depth " + to_string(depth) + "] Expanding with Flag = " + to_string(current_flag));
+    log_message("🌿 Number of parent states: " + to_string(parent_states.size()));
 
     uint32_t new_min_flag = UINT32_MAX;
     vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
@@ -2514,25 +2430,25 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
     int parent_count = 0;
     for (const auto &[parent_state, history, rotation_history] : parent_states) {
         ++parent_count;
-        //log_message("\n🌲 Parent #" + to_string(parent_count) + ": " + parent_state);
-        //log_message("  ├─ Path so far: " + (history.empty() ? "(none)" : history.back()));
-        //log_message("  └─ Rotations: " + (rotation_history.empty() ? "(none)" : rotation_history.back()));
+        log_message("\n🌲 Parent #" + to_string(parent_count) + ": " + parent_state);
+        log_message("  ├─ Path so far: " + (history.empty() ? "(none)" : history.back()));
+        log_message("  └─ Rotations: " + (rotation_history.empty() ? "(none)" : rotation_history.back()));
 
         int move_index = 0;
         for (const string &move : moves) {
             ++move_index;
-            //log_message("    ├─ 🔀 Move #" + to_string(move_index) + ": " + move);
+            log_message("    ├─ 🔀 Move #" + to_string(move_index) + ": " + move);
 
             string new_state = "a" + parent_state;
             new_state = apply_move(new_state, move);
-            //log_message("    │   ├─ State after move: " + new_state);
+            log_message("    │   ├─ State after move: " + new_state);
 
             auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
             string fixed_state = canonical_state.substr(1);
 
-            //log_message("    │   ├─ Canonical: " + canonical_state);
-            //log_message("    │   ├─ Applied Rotation: " + applied_rotation);
-            //log_message("    │   └─ Final fixed state: " + fixed_state);
+            log_message("    │   ├─ Canonical: " + canonical_state);
+            log_message("    │   ├─ Applied Rotation: " + applied_rotation);
+            log_message("    │   └─ Final fixed state: " + fixed_state);
 
             __uint128_t index = multinomial_rank(fixed_state, letter_counts);
 
@@ -2549,16 +2465,16 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
             input_file.close();
 
             uint32_t extracted_flag = flag & 0xF;
-            //log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
+            log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
 
             if (extracted_flag < new_min_flag) {
-                //log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
+                log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
                 new_min_flag = extracted_flag;
                 good_paths_next.clear();
             }
 
             if (extracted_flag == new_min_flag) {
-                //log_message("    │   ✅ Matching min flag, storing path.");
+                log_message("    │   ✅ Matching min flag, storing path.");
 
                 vector<string> new_history = history;
                 new_history.push_back(move);
@@ -2570,7 +2486,7 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
             }
 
             if (extracted_flag == 0) {
-                //log_message("    🎉 FOUND GOAL STATE! Building solution path...");
+                log_message("    🎉 FOUND GOAL STATE! Building solution path...");
 
                 vector<string> new_history = history;
                 new_history.push_back(move);
@@ -2592,7 +2508,7 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
                 final_solution.pop_back();
                 final_solution += " (depth=" + to_string(new_history.size()) + ")";
 
-                //log_message("    ✅ Final Solution: " + final_solution);
+                log_message("    ✅ Final Solution: " + final_solution);
             }
         }
     }
@@ -2937,7 +2853,7 @@ void solve_scrambles(const string &scramble_list_file, const string &binary_file
         log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
         log_message("=======================\n");
 
-        solve_scramble_fast(line, binary_filename);
+        solve_scramble(line, binary_filename);
     }
 
     infile.close();
@@ -2945,6 +2861,33 @@ void solve_scrambles(const string &scramble_list_file, const string &binary_file
     log_message("\n✅ Finished solving " + to_string(scramble_count) + " scrambles.");
     print_move_histogram();
 }
+
+void solve_scrambles_fast(const string &scramble_list_file, const string &binary_filename) {
+    ifstream infile(scramble_list_file);
+    if (!infile) {
+        cerr << "❌ Error opening scramble list file: " << scramble_list_file << endl;
+        return;
+    }
+
+    string line;
+    int scramble_count = 0;
+
+    while (getline(infile, line)) {
+        if (line.empty()) continue;  // Skip blank lines
+
+        scramble_count++;
+        log_message("\n\n=======================");
+        log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
+        log_message("=======================\n");
+
+        solve_scramble_fast(line, binary_filename);
+    }
+
+    infile.close();
+    log_message("\n✅ Finished solving " + to_string(scramble_count) + " scrambles.");
+    print_move_histogram();
+}
+
 
 
 // Main function
@@ -2961,69 +2904,69 @@ int main() {
 
 
 
-    /*
-    //string initial_state = "012345678901234567890123";  // Solved cube state
-    string initial_state = "aaaabbbbccccbbbbccccaaaa";  // HTR-solved cube state
-    cout << "\n🔢 Total solutions (d0) found: " << solution_counter << endl;
-    cout << "\n🔢 Total solutions (d1) found: " << solution_counter1 << endl;
-    cout << "\n🔢 Total solutions (d2) found: " << solution_counter2 << endl;
-    cout << "\n🔢 Total solutions (d3) found: " << solution_counter3 << endl;
-    //cout << "\n🔢 Total solutions (d4) found: " << solution_counter4 << endl;
-
-    cout << endl << endl;
-    test_multinomial_rank("aabbaaccbcbcccbaaccabbb", {{'a', 7}, {'b', 8}, {'c', 8}});
-    test_multinomial_rank("abaacacbccaccbbacacbbbb", {{'a', 7}, {'b', 8}, {'c', 8}});
-    test_multinomial_rank("aaccccccccbbbbbbababaaa", {{'a', 7}, {'b', 8}, {'c', 8}});
-    test_multinomial_rank("aaccccccccbbbbbbbbaaaaa", {{'a', 7}, {'b', 8}, {'c', 8}});*/
 
 
-    //string filename = "2100mio.bin";
-    //string input_string = "accccccccbbbbbbbbaaaaaa"; // Example cube state
-    //find_in_bin_file(input_string, filename);
+    string bin_filename = "2100mio.bin";
+    // 1)
+
+    binary_generator(0, 2100000000, "2100mio.bin"); 
+    binary_viewer(bin_filename, 100);
 
 
-    //test_multinomial_rank("bccccccccbbbbbbbaaaaaaa", {{'a', 7}, {'b', 8}, {'c', 8}});
-    //test_multinomial_rank("abbbaabccccabbaccccbbaa", {{'a', 7}, {'b', 8}, {'c', 8}});
+    // 2)
 
+    // Uncomment this until "depth_7_updater" for updating the bin-file with the depths. You can also uncomment depth_8 if you PC is fast. This depth takes
+    // about 40mins to run on my Macbook Air with M1-chip. Be aware that the code gets quite buggy when the scramble needs to apply moves to reach a depth where it 
+
+
+    depth_0_updater(bin_filename);
+    depth_1_updater(bin_filename);
+    depth_2_updater(bin_filename);
+    depth_3_updater(bin_filename);
+    depth_4_updater(bin_filename);  
+    depth_5_updater(bin_filename);  
+    depth_6_updater(bin_filename);
+    depth_7_updater(bin_filename);
+    ////depth_8_updater(bin_filename);
+    //....
+
+
+    // IMPORTANT: Comment out part 1) and 2) after you have generated and updated the lookup table. Reason is obvious
+
+
+
+    // 3) here you can try out the 4 variants of the solver:
+
+    // Fast version (only explores one optimal branch) speed: 0.7sec
+    solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
+
+    // Full-exploration version (slower but returns every path) speed: 16sec (a big chunk of that is due to documenting the entire branching-process in the log.txt)
+    //solve_scramble("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
     
-    string filename = "2100mio_v4.bin";
+    // Uncomment to try out Batchsolver (fast)
+    //solve_scrambles_fast("scrambles.txt", bin_filename);
     
-    //binary_generator(0, 2100000000, "2100mio_v4.bin"); 
-    //binary_viewer(filename, 100);
-    //binary_viewer_last_n_entries(filename, 100);
-
-    //depth_0_updater(filename);
-    //depth_1_updater(filename);
-    //depth_2_updater(filename);
-    //depth_3_updater(filename);
-    //depth_4_updater(filename);  
-    //depth_5_updater(filename);  
-    //depth_6_updater(filename);
-    //depth_7_updater(filename);
-    //depth_8_updater(filename);
-    //depth_9_updater(filename);
-    //depth_10_updater(filename);
-    //depth_11_updater(filename);
-    //depth_12_updater(filename);
+    // Uncomment to try out Batchsolver (full-branch)
+    // I really do not recommend running this with many scrambles (like in the scramble.txt currently) due to the huge size that log.txt will have
+    //solve_scrambles("scrambles.txt", bin_filename);
 
 
-    //solve_scramble("B' Rw2 R' L2 F2 R' U2 Rw B L2 Fw' D2 F Uw' R' B2 D2 L B2 L U2 L' U' Fw' D R Fw2 F Uw2 F' Rw Fw2 B' L2 R' F' L2 Fw2 D' F'", filename, 0);
-    //solve_scramble("L' R Fw B F' D' R' Uw Fw' U' Uw L Rw D2 Rw' B2 Uw2 Fw' Rw2 L2 B Fw' F' Uw U' Rw2 L F2 L D' Fw D' L B2 D2 Rw' R Fw2 U' Uw' ", filename, 0);
-    //solve_scramble("B2 F' Fw R' U F Fw' Rw U' B' Uw2 U' Fw2 F' B L2 B L2 B2 D U' Fw B' Uw' F2 Rw2 F2 Uw' L D' R L2 U' L2 F U' R Rw' L2 U'", filename, 0);
-    ///solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", filename, 0); // random scramble
-    //solve_scramble("L2 D2 B' D2 L2 F2 B' R2 F' L2 U' D2 R2 L D F' L' D' F2 R2 Rw2 Fw2 R' U Rw2 D Fw2 L U2 B2 R2 D L' F Fw' U2 Fw2 R Uw' L2 F R' Fw Uw B L", filename, 0); // 10 moves with current solver
-    //solve_scramble("L2 Fw2 Uw L U2 F Fw2 Uw2 L2 F L F2 B D Fw2 U Uw F' B Rw2 F2 U' F' B2 L F U' R2 B' F' Fw2 D Uw2 R2 L Fw2 U B L Uw2 ", filename, 0);
 
 
-    //solve_scramble("L2 U' F2 R2 U F2 U' L2 U F' B2 R D L' U R B' R D' L Uw2 L Rw2 D' B2 U Rw2 U' Uw2 L2 Uw2 Fw' U2 F L' F2 R2 Uw' L' Fw' Uw2 Fw R D2 Uw2", filename, 0);
-    solve_scrambles("scrambles.txt", filename);
+    // miscellaneous:
+
+    // Uncomment to test the multinomial_rank-hashing here. Please be aware that the input is a string for the cubestate where the first a is already taken away. So the input
+    // must have been adjusted with fixLetterOrder(.)
     
+    //cout << uint128_to_string(multinomial_rank("aabbaaccbcbcccbaaccabbb", {{'a', 7}, {'b', 8}, {'c', 8}}));
 
+
+    // timer:
     auto end_time = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end_time - start_time);
     log_message("Execution time: " + to_string(duration.count()) + " ms");
 
-    log_file.close(); // Close log file
+    log_file.close();
     return 0;
 }
 
