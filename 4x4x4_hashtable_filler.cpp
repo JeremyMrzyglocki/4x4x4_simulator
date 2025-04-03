@@ -14,16 +14,61 @@
 using namespace std;
 using namespace std::chrono; 
 
+// Move application and rotation
+string apply_move(const string& state, const string& move);
+string get_canonical_rotation(const string& cubestate);
+
+// Move functions
+string R(const string&); string R2(const string&); string R3(const string&);
+string L(const string&); string L2(const string&); string L3(const string&);
+string F(const string&); string F2(const string&); string F3(const string&);
+string B(const string&); string B2(const string&); string B3(const string&);
+string U(const string&); string U2(const string&); string U3(const string&);
+string D(const string&); string D2(const string&); string D3(const string&);
+
+string r(const string&); string r2(const string&); string r3(const string&);
+string l(const string&); string l2(const string&); string l3(const string&);
+string f(const string&); string f2(const string&); string f3(const string&);
+string b(const string&); string b2(const string&); string b3(const string&);
+string u(const string&); string u2(const string&); string u3(const string&);
+string d(const string&); string d2(const string&); string d3(const string&);
+
+string x_rotation(const string&);
+string x2_rotation(const string&);
+string x3_rotation(const string&);
+string y_rotation(const string&);
+string y2_rotation(const string&);
+string y3_rotation(const string&);
+string z_rotation(const string&);
+string z2_rotation(const string&);
+string z3_rotation(const string&);
+
+// Mirror functions
+string m_mirror(const string&);
+string s_mirror(const string&);
+string e_mirror(const string&);
+
+// Letter normalization
+string fixLetterOrder(const string&);
+
+// Letter swap
+string letter_swap(string, char, char);
+
 ofstream log_file("log.txt", ios::out); // Log file for all printed outputs
 
 const int MAX_MOVES = 20;
 int move_histogram[MAX_MOVES] = {0};
 int solution_counter = 0;  // Global counter to track the number of solutions found
 
-
 // Global variable to store updated states
 unordered_set<string> updated_states0, updated_states1, updated_states2, updated_states3, updated_states4,updated_states5,
 updated_states6, updated_states7, updated_states8, updated_states9, updated_states10, updated_states11, updated_states12;
+
+const vector<string> MOVES = {
+    "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+    "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+    "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+};
 
 
 // Precompute factorials for fast lookup (128-bit)
@@ -133,11 +178,8 @@ void binary_viewer(const string &filename, int num_entries) {
         string binary_representation = bitset<31>(value_part).to_string();
         string flag_representation = bitset<4>(flag_part).to_string();
 
-        cout << "Binary: " << binary_representation 
-             << " | Flag: " << flag_representation 
-             << " | Decimal: " << value_part << endl;
+        cout << "Binary: " << binary_representation << " | Flag: " << flag_representation << " | Decimal: " << value_part << endl;
     }
-
     input_file.close();
 }
 
@@ -181,7 +223,6 @@ void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_fl
     
 }
 
-
 void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &filename) {
     auto start_time = high_resolution_clock::now();
     
@@ -215,27 +256,18 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
 }
 
 
-
 // Function to update depth 0: Flag starting state with 0000
 void depth_0_updater(const string &filename) {
     log_message("\n🔄 Updating depth 0 starting state...");
-
-    string starting_cubestate = "aaaabbbbccccbbbbccccaaaa";
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    string cubestate_without_first_a = starting_cubestate.substr(1);
-    __uint128_t index = multinomial_rank(cubestate_without_first_a, letter_counts);
+    __uint128_t index = multinomial_rank("aaabbbbccccbbbbccccaaaa", {{'a', 7}, {'b', 8}, {'c', 8}}); // the letters here are the starting_cubestate without the first a
 
     update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0000);
     log_message("Flag at index " + uint128_to_string(index) + " set to 0000.");
 
-    updated_states0.insert(cubestate_without_first_a);
+    updated_states0.insert("aaabbbbccccbbbbccccaaaa"); // the "solved"-state without the first a is saved
 
     ofstream file("updated_states_depth_0.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_0.txt");
-        return;
-    }
+    if (!file) {log_message("❌ Error opening file: updated_states_depth_0.txt"); return;}
 
     for (const auto &state : updated_states0) {
         file << state << endl;
@@ -253,21 +285,13 @@ void depth_updater(
 ) {
     log_message("\n🔄 Generating depth " + to_string(depth) + " states...");
 
-    const vector<string> moves = {
-        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
-    };
-
     unordered_set<string> prefixed_states;
     for (const auto &state : previous_depth_states) {
         prefixed_states.insert("a" + state);  // Add back the leading 'a'
     }
-
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
+    
     for (const auto &state : prefixed_states) {
-        for (const auto &move : moves) {
+        for (const auto &move : MOVES) {
             string moved = apply_move(state, move);
             string canonical = get_canonical_rotation(moved);
             string fixed_state = canonical.substr(1);  // remove leading 'a'
@@ -282,7 +306,7 @@ void depth_updater(
     log_message("📝 Updating binary file with " + to_string(current_depth_states.size()) + " depth " + to_string(depth) + " states...");
 
     for (const auto &state : current_depth_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
+        __uint128_t index = multinomial_rank(state, {{'a', 7}, {'b', 8}, {'c', 8}});
         update_flag_in_file(filename, static_cast<uint32_t>(index), static_cast<uint32_t>(depth));
     }
 
@@ -319,18 +343,6 @@ void swap(char& a, char& b) {
     a = b;
     b = temp;
 }
-
-// Function to remove spaces from the scramble string
-string remove_spaces(const string& str) {
-    string result;
-    for (char ch : str) {
-        if (ch != ' ') {
-            result += ch;
-        }
-    }
-    return result;
-}
-
 
 // Function to apply a move sequence to a cube state
 string apply_move(const string& state, const string& move) {
@@ -386,7 +398,6 @@ string apply_move(const string& state, const string& move) {
 
 // Function to translate a scramble into a sequence of moves applied to the cube state
 string translate_scramble_to_moves(const string& scramble) {
-    //string clean_scramble = remove_spaces(scramble);
     stringstream ss(scramble);
     string move;
     string current_state = "aaaabbbbccccbbbbccccaaaa";  // HTR-solved cube state
@@ -435,9 +446,7 @@ bool startsWithAllowedPrefix(const string& combination) {
     return false;
 }
 
-    // The following part has many redundant swaps and cylces, but it is easier to understand and verify and also faster to 
-    // implement at this point in time. Will optimize later.
-
+ 
 
 // Perform an "x-rotation" on the combination
 string x_rotation(const string& combination) {
@@ -451,14 +460,8 @@ string x_rotation(const string& combination) {
     return combination_new;
 }
 
-string x2_rotation(const string& combination) {
-    string combination_new = x_rotation(combination);  // First transformation
-    return x_rotation(combination_new);               // Apply x_rotation again and return
-}
-
-string x3_rotation(const string& combination) { // Perform x3_rotation (x_rotation applied three times)
-    return x_rotation(x2_rotation(combination));
-}
+string x2_rotation(const string& combination) {string combination_new = x_rotation(combination);  return x_rotation(combination_new);}
+string x3_rotation(const string& combination) {return x_rotation(x2_rotation(combination));}
 
 // Perform a "y-rotation" on the combination
 string y_rotation(const string& combination) {
@@ -472,29 +475,8 @@ string y_rotation(const string& combination) {
     return combination_new;
 
 }
-
-string y2_rotation(const string& combination) {
-    string combination_new = combination;
-    swap(combination_new[0], combination_new[2]);
-    swap(combination_new[1], combination_new[3]);
-    swap(combination_new[4], combination_new[12]);
-    swap(combination_new[5], combination_new[13]);
-    swap(combination_new[6], combination_new[14]);
-    swap(combination_new[7], combination_new[15]);
-    swap(combination_new[8], combination_new[16]);
-    swap(combination_new[9], combination_new[17]);
-    swap(combination_new[10], combination_new[18]);
-    swap(combination_new[11], combination_new[19]);
-    swap(combination_new[20], combination_new[22]);
-    swap(combination_new[21], combination_new[23]);
-    return combination_new;
-
-}
-
-string y3_rotation(const string& combination) {
-    string combination_new = y2_rotation(combination); 
-    return y_rotation(combination_new);            
-}
+string y2_rotation(const string& combination) {string combination_new = y_rotation(combination);  return y_rotation(combination_new);}
+string y3_rotation(const string& combination) {string combination_new = y2_rotation(combination); return y_rotation(combination_new);}
 
 
 // Perform a "z-rotation" on the combination
@@ -508,15 +490,8 @@ string z_rotation(const string& combination) {
     cycle(combination_new[16], combination_new[19], combination_new[18], combination_new[17]);  // Cycle 16 -> 19 -> 18 -> 17 -> 16
     return combination_new;
 }
-
-string z2_rotation(const string& combination) {
-    string combination_new = z_rotation(combination);  // First transformation
-    return z_rotation(combination_new);             
-}
-
-string z3_rotation(const string& combination) { // Perform z3_rotation (z_rotation applied three times)
-    return z_rotation(z2_rotation(combination));
-}
+string z2_rotation(const string& combination) {string combination_new = z_rotation(combination);return z_rotation(combination_new);}
+string z3_rotation(const string& combination) {return z_rotation(z2_rotation(combination));}
 
 // I did introduce mirrors here, but they are only used in my version 1 solver. Here, I made some experiments and while adding them reduces the states in each depth
 // by 10% (not scaling exponentially sadly), it is also 4x-ing the amount of time needed to update the lookup-table. I will not use mirror-symetry as of right now.
@@ -632,8 +607,7 @@ string l3(const string& combination) {
 
 string F(const string& combination) {
     string combination_new = combination;
-    // Cycle 8 -> 9 -> 10 -> 11 -> 8
-    cycle(combination_new[8], combination_new[9], combination_new[10], combination_new[11]);
+    cycle(combination_new[8], combination_new[9], combination_new[10], combination_new[11]);    // Cycle 8 -> 9 -> 10 -> 11 -> 8
     return combination_new;
 }
 
@@ -648,28 +622,18 @@ string F3(const string& combination) {
 
 string f(const string& combination) {
     string combination_new = combination;
-    // Cycle 2 -> 15 -> 20 -> 5 -> 2
-    cycle(combination_new[2], combination_new[15], combination_new[20], combination_new[5]);
-    // Cycle 3 -> 12 -> 21 -> 6 -> 3
-    cycle(combination_new[3], combination_new[12], combination_new[21], combination_new[6]);
-    // Cycle 8 -> 9 -> 10 -> 11 -> 8
-    cycle(combination_new[8], combination_new[9], combination_new[10], combination_new[11]);
+    cycle(combination_new[2], combination_new[15], combination_new[20], combination_new[5]);    // Cycle 2 -> 15 -> 20 -> 5 -> 2
+    cycle(combination_new[3], combination_new[12], combination_new[21], combination_new[6]);    // Cycle 3 -> 12 -> 21 -> 6 -> 3  
+    cycle(combination_new[8], combination_new[9], combination_new[10], combination_new[11]);    // Cycle 8 -> 9 -> 10 -> 11 -> 8
     return combination_new;
 }
         
-string f2(const string& combination) {
-    string combination_new = f(combination);  // First transformation
-    return f(combination_new);               // Apply F again and return
-}
-
-string f3(const string& combination) { // Perform F3 (F applied three times)
-    return f(f2(combination));
-}
+string f2(const string& combination) {string combination_new = f(combination); return f(combination_new);}
+string f3(const string& combination) {return f(f2(combination));}
 
 string B(const string& combination) {
     string combination_new = combination;
-    // Cycle 16 -> 17 -> 18 -> 19 -> 16
-    cycle(combination_new[16], combination_new[17], combination_new[18], combination_new[19]);
+    cycle(combination_new[16], combination_new[17], combination_new[18], combination_new[19]);     // Cycle 16 -> 17 -> 18 -> 19 -> 16
     return combination_new;
 }
 
@@ -700,8 +664,7 @@ string b3(const string& combination) {
 
 string U(const string& combination) {
     string combination_new = combination;
-    // Cycle 0 -> 1 -> 2 -> 3 -> 0
-    cycle(combination_new[0], combination_new[1], combination_new[2], combination_new[3]);
+    cycle(combination_new[0], combination_new[1], combination_new[2], combination_new[3]);     // Cycle 0 -> 1 -> 2 -> 3 -> 0
     return combination_new;
 }
 
@@ -733,8 +696,7 @@ string u3(const string& combination) {
 
 string D(const string& combination) {
     string combination_new = combination;
-    // Cycle 20 -> 21 -> 22 -> 23 -> 20
-    cycle(combination_new[20], combination_new[21], combination_new[22], combination_new[23]);
+    cycle(combination_new[20], combination_new[21], combination_new[22], combination_new[23]);     // Cycle 20 -> 21 -> 22 -> 23 -> 20
     return combination_new;
 }
 
@@ -820,84 +782,6 @@ pair<string, string> get_canonical_rotation_with_rotation(const string &cubestat
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-string normalize_solution(const string& solution) {
-    map<string, map<char, char>> rotation_maps = {
-        {"x",  {{'U','F'}, {'F','D'}, {'D','B'}, {'B','U'}, {'L','L'}, {'R','R'}}},
-        {"x'",   {{'U','B'}, {'B','D'}, {'D','F'}, {'F','U'}, {'L','L'}, {'R','R'}}},
-        {"x2",  {{'U','D'}, {'D','U'}, {'F','B'}, {'B','F'}, {'L','L'}, {'R','R'}}},
-        {"y",  {{'F','R'}, {'R','B'}, {'B','L'}, {'L','F'}, {'U','U'}, {'D','D'}}},
-        {"y'",   {{'F','L'}, {'L','B'}, {'B','R'}, {'R','F'}, {'U','U'}, {'D','D'}}},
-        {"y2",  {{'F','B'}, {'B','F'}, {'L','R'}, {'R','L'}, {'U','U'}, {'D','D'}}},
-        {"z",  {{'U','L'}, {'L','D'}, {'D','R'}, {'R','U'}, {'F','F'}, {'B','B'}}},
-        {"z'",   {{'U','R'}, {'R','D'}, {'D','L'}, {'L','U'}, {'F','F'}, {'B','B'}}},
-        {"z2",  {{'U','D'}, {'D','U'}, {'L','R'}, {'R','L'}, {'F','F'}, {'B','B'}}}
-    };
-
-    // Tokenize input
-    istringstream iss(solution);
-    vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
-
-    // Result moves
-    vector<string> result;
-
-    // Identity map initially
-    map<char, char> current_map = {{'U','U'}, {'D','D'}, {'L','L'}, {'R','R'}, {'F','F'}, {'B','B'}};
-
-    // Compose rotation: current_map ∘ new_rotation
-    auto compose = [](map<char, char> a, const map<char, char>& b) {
-        map<char, char> result;
-        for (const auto& [face, mapped] : a) {
-            result[face] = b.count(mapped) ? b.at(mapped) : mapped;
-        }
-        return result;
-    };
-
-    for (const string& token : tokens) {
-        if (rotation_maps.count(token)) {
-            // Rotation: keep it in output, update the map for future moves
-            result.push_back(token);
-            current_map = compose(current_map, rotation_maps[token]);
-        } else {
-            // Move: apply current map
-            string base, suffix;
-            if (token.size() >= 2 && token[1] == 'w') {
-                base = token.substr(0, 2);  // e.g., Rw
-                suffix = token.substr(2);   // e.g., ', 2, ''
-            } else {
-                base = token.substr(0, 1);
-                suffix = token.substr(1);
-            }
-
-            char face = base[0];
-            char mapped = current_map[face];
-            base[0] = mapped;
-
-            result.push_back(base + suffix);
-        }
-    }
-
-    // Join moves
-    ostringstream oss;
-    for (const auto& move : result) oss << move << " ";
-    string output = oss.str();
-    if (!output.empty()) output.pop_back();
-    return output;
-}
-
-
 bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
                       const string &filename, uint32_t current_flag, 
                       map<char, int> &letter_counts, int depth, 
@@ -908,11 +792,7 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
         return true;
     }
 
-    vector<string> moves = {
-        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
-    };
+const vector<string>& moves = MOVES;
 
     log_message("\n\n🌳 [Depth " + to_string(depth) + "] Expanding with Flag = " + to_string(current_flag));
     log_message("🌿 Number of parent states: " + to_string(parent_states.size()));
@@ -928,7 +808,7 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
         log_message("  └─ Rotations: " + (rotation_history.empty() ? "(none)" : rotation_history.back()));
 
         int move_index = 0;
-        for (const string &move : moves) {
+        for (const string &move : MOVES) {
             ++move_index;
             log_message("    ├─ 🔀 Move #" + to_string(move_index) + ": " + move);
 
@@ -1025,11 +905,7 @@ bool recursive_expand_less_logs(vector<tuple<string, vector<string>, vector<stri
         return true;
     }
 
-    vector<string> moves = {
-        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
-    };
+
     uint32_t new_min_flag = UINT32_MAX;
     vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
 
@@ -1037,7 +913,7 @@ bool recursive_expand_less_logs(vector<tuple<string, vector<string>, vector<stri
     for (const auto &[parent_state, history, rotation_history] : parent_states) {
         ++parent_count;
         int move_index = 0;
-        for (const string &move : moves) {
+        for (const string &move : MOVES) {
             ++move_index;
 
             string new_state = "a" + parent_state;
@@ -1188,8 +1064,6 @@ void solve_scramble(const string &scramble, const string &filename, bool print_o
             formatted_solution.pop_back();
         }
 
-        string adjusted_solution = normalize_solution(formatted_solution); // Optional
-
         if (!print_only_first_solution || !first_solution_logged) {
             log_message("Final Solution: " + formatted_solution);
         }
@@ -1235,17 +1109,11 @@ bool recursive_expand_fast(
         return true;
     }
 
-    vector<string> moves = {
-        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
-    };
-
     uint32_t new_min_flag = UINT32_MAX;
     vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
 
     for (const auto &[parent_state, history, rotation_history] : parent_states) {
-        for (const string &move : moves) {
+        for (const string &move : MOVES) {
             string new_state = "a" + parent_state;
             new_state = apply_move(new_state, move);
 
@@ -1532,9 +1400,6 @@ void solve_scrambles_fast(const string &scramble_list_file, const string &binary
 int main() {
    auto start_time = high_resolution_clock::now();
    precompute_factorials();
-   vector<string> moves = {
-       "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'", "U", "U2", "U'", "D", "D2", "D'", 
-       "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
 
     string bin_filename = "2100mio_april2.bin";
     // 1)
@@ -1555,8 +1420,8 @@ int main() {
     depth_updater(4, bin_filename, updated_states3, updated_states4, "updated_states_depth_4_april3.txt");
     depth_updater(5, bin_filename, updated_states4, updated_states5, "updated_states_depth_5_april3.txt");
     depth_updater(6, bin_filename, updated_states5, updated_states6, "updated_states_depth_6_april3.txt");
-    depth_updater(7, bin_filename, updated_states6, updated_states7, "updated_states_depth_7_april3.txt");
-    depth_updater(8, bin_filename, updated_states7, updated_states8, "updated_states_depth_8_april3.txt");
+    //depth_updater(7, bin_filename, updated_states6, updated_states7, "updated_states_depth_7_april3.txt");
+    //depth_updater(8, bin_filename, updated_states7, updated_states8, "updated_states_depth_8_april3.txt");
     //....
 
 
