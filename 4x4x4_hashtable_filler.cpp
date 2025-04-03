@@ -11,13 +11,6 @@
 #include <numeric>
 #include <unordered_map>
 
-/*
-BE AWARE. Spaghetti-code and typo-rich documentation ahead! 
-
-(At least it's functional)
-
-*/
-
 using namespace std;
 using namespace std::chrono; 
 
@@ -26,96 +19,15 @@ ofstream log_file("log.txt", ios::out); // Log file for all printed outputs
 const int MAX_MOVES = 20;
 int move_histogram[MAX_MOVES] = {0};
 
-// Function prototypes
-string fixLetterOrder(const string& combination);
-string letter_swap(string combination, char from, char to);
-bool startsWithAllowedPrefix(const string& combination);
-bool passesRotationTests(const string& combination, const set<string>& validCombinations);
-void generateCombinations(int length, set<string>& validCombinations, int& counter, const unordered_set<string>& forbiddenSequences);
-string y_rotation(const string& combination);
-string y2_rotation(const string& combination);
-string y3_rotation(const string& combination);
-string z_rotation(const string& combination);
-string z2_rotation(const string& combination);
-string z3_rotation(const string& combination);
-string x_rotation(const string& combination);
-string x2_rotation(const string& combination);
-string x3_rotation(const string& combination);
-string m_mirror(const string& combination);
-string s_mirror(const string& combination);
-string e_mirror(const string& combination);
-string sm_mirror(const string& combination);
-string ms_mirror(const string& combination);
-string R(const string& combination);
-string R2(const string& combination);
-string R3(const string& combination);
-string r(const string& combination);
-string r2(const string& combination);
-string r3(const string& combination);
-string L(const string& combination);
-string L2(const string& combination);
-string L3(const string& combination);
-string l(const string& combination);
-string l2(const string& combination);
-string l3(const string& combination);
-string F(const string& combination);
-string F2(const string& combination);
-string F3(const string& combination);
-string f(const string& combination);
-string f2(const string& combination);
-string f3(const string& combination);
-string B(const string& combination);
-string B2(const string& combination);
-string B3(const string& combination);
-string b(const string& combination);
-string b2(const string& combination);
-string b3(const string& combination);
-string U(const string& combination);
-string U2(const string& combination);
-string U3(const string& combination);
-string u(const string& combination);
-string u2(const string& combination);
-string u3(const string& combination);
-string D(const string& combination);
-string D2(const string& combination);
-string D3(const string& combination);
-string d(const string& combination);
-string d2(const string& combination);
-string d3(const string& combination);
-void cycle(char& a, char& b, char& c, char& d); 
-void swap(char& a, char& b);
-string remove_spaces(const string& str);
-string apply_move(const string& state, const string& move);
-string translate_scramble_to_moves(const string& scramble);
-string get_canonical_rotation(const string &cubestate);
-void recursive_expand(vector<string> &parent_states, const string &filename, uint32_t current_flag, map<char, int> &letter_counts, int depth);
-bool recursive_expand(vector<pair<string, vector<string>>> &parent_states, 
-                      const string &filename, uint32_t current_flag, 
-                      map<char, int> &letter_counts, int depth, 
-                      vector<string> &successful_path);
-bool is_already_flagged_or_mirrored(const string &canonical_state, const string &filename, int depth, const map<char, int> &letter_counts);
-
 int solution_counter = 0;  // Global counter to track the number of solutions found
 int solution_counter1 = 0;  
 int solution_counter2 = 0;  
 int solution_counter3 = 0;  
 int solution_counter4 = 0;  
 
-
-unordered_set<string> updated_states0;  // Global variable to store updated states
-unordered_set<string> updated_states1;  
-unordered_set<string> updated_states2;  
-unordered_set<string> updated_states3;  
-unordered_set<string> updated_states4;  
-unordered_set<string> updated_states5;  
-unordered_set<string> updated_states6;  
-unordered_set<string> updated_states7;  
-unordered_set<string> updated_states8;  
-unordered_set<string> updated_states9;  
-unordered_set<string> updated_states10;  
-unordered_set<string> updated_states11;  
-unordered_set<string> updated_states12;  
-unordered_set<string> updated_states13;  
+// Global variable to store updated states
+unordered_set<string> updated_states0, updated_states1, updated_states2, updated_states3, updated_states4,updated_states5,
+updated_states6, updated_states7, updated_states8, updated_states9, updated_states10, updated_states11, updated_states12;
 
 
 // Precompute factorials for fast lookup (128-bit)
@@ -431,12 +343,6 @@ void binary_generator(__uint128_t start_val, __uint128_t end_val, const string &
 
 
 
-
-
-// DEPTHS 0-13
-
-// here is where the fun part begins
-
 // Function to update depth 0: Flag starting state with 0000
 void depth_0_updater(const string &filename) {
     log_message("\n🔄 Updating depth 0 starting state...");
@@ -465,1290 +371,60 @@ void depth_0_updater(const string &filename) {
     log_message("📁 Depth 0 states saved to updated_states_depth_0.txt");
 }
 
-void depth_1_updater(const string &filename) {
-    log_message("\n🔄 [Depth 1] Starting generation from updated depth 0 states...");
+void depth_updater(
+    int depth,
+    const string &filename,
+    const unordered_set<string> &previous_depth_states,
+    unordered_set<string> &current_depth_states,
+    const string &output_txt_filename
+) {
+    log_message("\n🔄 Generating depth " + to_string(depth) + " states...");
 
-    vector<string> moves = {
+    const vector<string> moves = {
         "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-        "U", "U2", "U'", "D", "D2", "D'",
-        "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", "Fw", "Fw2", "Fw'",
-        "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
     };
 
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_1_states;
-
-    // Prepend 'a' to each state from depth 0
-    for (const auto &state : updated_states0) {
-        updated_states_with_a.insert("a" + state);
+    unordered_set<string> prefixed_states;
+    for (const auto &state : previous_depth_states) {
+        prefixed_states.insert("a" + state);  // Add back the leading 'a'
     }
 
-    log_message("✅ [Depth 1] Total parent states to process: " + to_string(updated_states_with_a.size()));
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
 
-    int state_count = 0;
-    for (const auto &state : updated_states_with_a) {
-        ++state_count;
-        log_message("\n🌲 [State " + to_string(state_count) + "] Original: " + state);
+    for (const auto &state : prefixed_states) {
+        for (const auto &move : moves) {
+            string moved = apply_move(state, move);
+            string canonical = get_canonical_rotation(moved);
+            string fixed_state = canonical.substr(1);  // remove leading 'a'
 
-        int move_count = 0;
-        for (const string &move : moves) {
-            ++move_count;
+            // Optional: skip flagged/mirrored states here if re-enabled
+            // if (is_already_flagged_or_mirrored(canonical, filename, depth, letter_counts)) continue;
 
-            log_message("  ├─ 🎯 Move " + to_string(move_count) + ": " + move);
-
-            string new_state = apply_move(state, move);
-            log_message("  │   ├─ 🧠 After Move: " + new_state);
-
-            string canonical_state = get_canonical_rotation(new_state);
-            log_message("  │   ├─ 🔄 Canonical: " + canonical_state);
-
-            string fixed_state = canonical_state.substr(1);
-            log_message("  │   ├─ ✂️  Fixed (w/o 'a'): " + fixed_state);
-
-            if (depth_1_states.find(fixed_state) == depth_1_states.end()) {
-                log_message("  │   └─ ✅ Added new unique state.");
-                depth_1_states.insert(fixed_state);
-            } else {
-                log_message("  │   └─ ⚠️ Already seen. Skipping.");
-            }
+            current_depth_states.insert(fixed_state);
         }
     }
 
-    log_message("\n💾 Updating binary file with " + to_string(depth_1_states.size()) + " new depth 1 states...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+    log_message("📝 Updating binary file with " + to_string(current_depth_states.size()) + " depth " + to_string(depth) + " states...");
 
-    for (const auto &state : depth_1_states) {
+    for (const auto &state : current_depth_states) {
         __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0001);
+        update_flag_in_file(filename, static_cast<uint32_t>(index), static_cast<uint32_t>(depth));
     }
 
-    log_message("✅ [Depth 1] All states updated in file.");
-
-    // Save to disk
-    ofstream file("updated_states_depth_1.txt", ios::out);
+    ofstream file(output_txt_filename);
     if (!file) {
-        log_message("❌ Failed to open file: updated_states_depth_1.txt");
+        log_message("❌ Failed to open file: " + output_txt_filename);
         return;
     }
-    for (const auto &state : depth_1_states) {
+
+    for (const auto &state : current_depth_states) {
         file << state << endl;
     }
+
     file.close();
-    updated_states1 = depth_1_states;
-
-    log_message("📁 [Depth 1] Saved to updated_states_depth_1.txt");
-}
-
-void depth_2_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 2 states from updated depth 1 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_2_states;
-
-    // Prepend 'a' to each state in updated_states1
-    for (const auto &state : updated_states1) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 1 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
- 
-    for (const auto &state : updated_states_with_a) {
-        log_message("\n=== 🔹 Processing Depth 2 State (Batch " + to_string(batch_counter) + ") ===");
-        log_message("🔹 Original Depth 2 State: " + state);
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-            //log_message("🟡 Move applied: " + move + " | Resulting Depth 5 State: " + new_state);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 2, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_2_states.find(fixed_state) == depth_2_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_2_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_2_states.size()) + " depth 2 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_2_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0010);
-    }
-
-    log_message("\n✅ Depth 2 state generation and update completed!");
-
-    // Save the new depth 2 states for future processing
-    ofstream file("updated_states_depth_2.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_2.txt");
-        return;
-    }
-    for (const auto &state : depth_2_states) {
-        file << state << endl;
-    }
-    file.close();
-    
-    updated_states2 = depth_2_states;  // ✅ Ensure states are stored for next step
-
-    log_message("\n📁 Depth 2 states saved to updated_states_depth_2.txt");
-
-
-}
-
-
-
-
-
-
-
-void depth_3_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 3 states from updated depth 2 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_3_states;
-
-    // Prepend 'a' to each state in updated_states2
-    for (const auto &state : updated_states2) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 2 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-        for (const auto &state : updated_states_with_a) {
-            //log_message("\n=== 🔹 Processing Depth 2 State (Batch " + to_string(batch_counter) + ") ===");
-            //log_message("🔹 Original Depth 2 State: " + state);
-            batch_counter++;
-
-            for (const string &move : moves) {
-                move_counter++;
-
-                // ✅ Apply move
-                string new_state = apply_move(state, move);
-                //log_message("🟡 Move applied: " + move + " | Resulting Depth 5 State: " + new_state);
-
-                // ✅ Compute canonical form
-                string canonical_state = get_canonical_rotation(new_state);
-                //log_message("🟢 Canonical form: " + canonical_state);
-
-                // ✅ Extract without leading 'a'
-                string fixed_state = canonical_state.substr(1);
-                //log_message("🔵 Fixed canonical form: " + fixed_state);
-                
-                //if (is_already_flagged_or_mirrored(canonical_state, filename, 3, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-                //    continue;  // Skip adding/flagging this state
-                //}
-
-                if (depth_3_states.find(fixed_state) == depth_3_states.end()) {
-                    //log_message("✅ New unique state added: " + fixed_state);
-                } else {
-                    //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-                }
-                depth_3_states.insert(fixed_state);
-            }
-        }
-
-    log_message("\n🔄 Updating " + to_string(depth_3_states.size()) + " depth 3 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_3_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0011);
-    }
-
-    log_message("\n✅ Depth 3 state generation and update completed!");
-
-    // Save the new depth 3 states for future processing
-    ofstream file("updated_states_depth_3.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_3.txt");
-        return;
-    }
-    for (const auto &state : depth_3_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states3 = depth_3_states; 
-    log_message("\n📁 Depth 3 states saved to updated_states_depth_3.txt");
-}
-
-
-void depth_4_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 4 states from updated depth 3 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_4_states;
-
-    // Prepend 'a' to each state in updated_states3
-    for (const auto &state : updated_states3) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 3 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-        //log_message("\n=== 🔹 Processing Depth 3 State (Batch " + to_string(batch_counter) + ") ===");
-        //log_message("🔹 Original Depth 3 State: " + state);
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-            //log_message("🟡 Move applied: " + move + " | Resulting Depth 5 State: " + new_state);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 4, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_4_states.find(fixed_state) == depth_4_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_4_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_4_states.size()) + " depth 4 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_4_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0100);
-    }
-
-    log_message("\n✅ Depth 4 state generation and update completed!");
-
-    // Save the new depth 4 states for future processing
-    ofstream file("updated_states_depth_4.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_4.txt");
-        return;
-    }
-    for (const auto &state : depth_4_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states4 = depth_4_states; 
-    log_message("\n📁 Depth 4 states saved to updated_states_depth_4.txt");
-}
-
-void depth_5_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 5 states from updated depth 4 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_5_states;
-
-    // Prepend 'a' to each state in updated_states4
-    for (const auto &state : updated_states4) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 4 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-        //log_message("\n=== 🔹 Processing Depth 4 State (Batch " + to_string(batch_counter) + ") ===");
-        //log_message("🔹 Original Depth 4 State: " + state);
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-            //log_message("🟡 Move applied: " + move + " | Resulting Depth 5 State: " + new_state);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 5, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            // ✅ Insert canonical state into depth_5_states
-            if (depth_5_states.find(fixed_state) == depth_5_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_5_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_5_states.size()) + " depth 5 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_5_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0101);
-    }
-
-    log_message("\n✅ Depth 5 state generation and update completed!");
-
-    // Save the new depth 5 states for future processing
-    ofstream file("updated_states_depth_5.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_5.txt");
-        return;
-    }
-    for (const auto &state : depth_5_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states5 = depth_5_states; 
-    log_message("\n📁 Depth 5 states saved to updated_states_depth_5.txt");
-}
-
-void depth_6_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 6 states from updated depth 5 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_6_states;
-
-    // Prepend 'a' to each state in updated_states5
-    for (const auto &state : updated_states5) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 5 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-        for (const auto &state : updated_states_with_a) {
-            //log_message("\n=== 🔹 Processing Depth 5 State (Batch " + to_string(batch_counter) + ") ===");
-            //log_message("🔹 Original Depth 5 State: " + state);
-            batch_counter++;
-
-            for (const string &move : moves) {
-                move_counter++;
-
-                // ✅ Apply move
-                string new_state = apply_move(state, move);
-                //log_message("🟡 Move applied: " + move + " | Resulting Depth 6 State: " + new_state);
-
-                // ✅ Compute canonical form
-                string canonical_state = get_canonical_rotation(new_state);
-                //log_message("🟢 Canonical form: " + canonical_state);
-
-                // ✅ Extract without leading 'a'
-                string fixed_state = canonical_state.substr(1);
-                //log_message("🔵 Fixed canonical form: " + fixed_state);
-        
-                //if (is_already_flagged_or_mirrored(canonical_state, filename, 6, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-                //    continue;  // Skip adding/flagging this state
-                //}
-
-                // ✅ Insert canonical state into depth_6_states
-                if (depth_6_states.find(fixed_state) == depth_6_states.end()) {
-                    //log_message("✅ New unique state added: " + fixed_state);
-                } else {
-                    //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-                }
-                depth_6_states.insert(fixed_state);
-            }
-        }
-
-    log_message("\n🔄 Updating " + to_string(depth_6_states.size()) + " depth 6 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_6_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0110);
-    }
-
-    log_message("\n✅ Depth 6 state generation and update completed!");
-
-    // Save the new depth 6 states for future processing
-    ofstream file("updated_states_depth_6.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_6.txt");
-        return;
-    }
-    for (const auto &state : depth_6_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states6 = depth_6_states; 
-    log_message("\n📁 Depth 6 states saved to updated_states_depth_6.txt");
-}
-
-void depth_7_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 7 states from updated depth 6 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_7_states;
-
-    // Prepend 'a' to each state in updated_states6
-    for (const auto &state : updated_states6) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 6 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-        //log_message("\n=== 🔹 Processing Depth 6 State (Batch " + to_string(batch_counter) + ") ===");
-        //log_message("🔹 Original Depth 6 State: " + state);
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-            //log_message("🟡 Move applied: " + move + " | Resulting Depth 5 State: " + new_state);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 7, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_7_states.find(fixed_state) == depth_7_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_7_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_7_states.size()) + " depth 7 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_7_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0111);
-    }
-
-    log_message("\n✅ Depth 7 state generation and update completed!");
-
-    // Save the new depth 7 states for future processing
-    ofstream file("updated_states_depth_7.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_7.txt");
-        return;
-    }
-    for (const auto &state : depth_7_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states7 = depth_7_states; 
-    log_message("\n📁 Depth 7 states saved to updated_states_depth_7.txt");
-}
-
-void depth_8_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 8 states from updated depth 7 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_8_states;
-
-    // Prepend 'a' to each state in updated_states7
-    for (const auto &state : updated_states7) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 8 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-        //log_message("\n=== 🔹 Processing Depth 6 State (Batch " + to_string(batch_counter) + ") ===");
-        //log_message("🔹 Original Depth 7 State: " + state);
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-            //log_message("🟡 Move applied: " + move + " | Resulting Depth 8 State: " + new_state);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 8, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_8_states.find(fixed_state) == depth_8_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_8_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_8_states.size()) + " depth 8 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_8_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1000);
-    }
-
-    log_message("\n✅ Depth 8 state generation and update completed!");
-
-    // Save the new depth 8 states for future processing
-    ofstream file("updated_states_depth_8.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_8.txt");
-        return;
-    }
-    for (const auto &state : depth_8_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states8 = depth_8_states; 
-    log_message("\n📁 Depth 8 states saved to updated_states_depth_8.txt");
-}
-
-
-void depth_9_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 9 states from updated depth 8 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_9_states;
-
-    // Prepend 'a' to each state in updated_states8
-    for (const auto &state : updated_states8) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 9 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-        //log_message("\n=== 🔹 Processing Depth 9 State (Batch " + to_string(batch_counter) + ") ===");
-        //log_message("🔹 Original Depth 8 State: " + state);
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-            //log_message("🟡 Move applied: " + move + " | Resulting Depth 8 State: " + new_state);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 9, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_9_states.find(fixed_state) == depth_9_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_9_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_9_states.size()) + " depth 9 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_9_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1001);
-    }
-
-    log_message("\n✅ Depth 9 state generation and update completed!");
-
-    // Save the new depth 9 states for future processing
-    ofstream file("updated_states_depth_9.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_9.txt");
-        return;
-    }
-    for (const auto &state : depth_9_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states9 = depth_9_states; 
-    log_message("\n📁 Depth 9 states saved to updated_states_depth_9.txt");
-}
-
-
-void depth_10_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 10 states from updated depth 9 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_10_states;
-
-    // Prepend 'a' to each state in updated_states10
-    for (const auto &state : updated_states9) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 10 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 10, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_10_states.find(fixed_state) == depth_10_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_10_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_10_states.size()) + " depth 10 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_10_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1010);
-    }
-
-    log_message("\n✅ Depth 10 state generation and update completed!");
-
-    // Save the new depth 10 states for future processing
-    ofstream file("updated_states_depth_10.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_10.txt");
-        return;
-    }
-    for (const auto &state : depth_10_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states9 = depth_10_states; 
-    log_message("\n📁 Depth 10 states saved to updated_states_depth_10.txt");
-}
-
-
-void depth_11_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 11 states from updated depth 10 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_11_states;
-
-    // Prepend 'a' to each state in updated_states10
-    for (const auto &state : updated_states10) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 11 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 11, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_11_states.find(fixed_state) == depth_11_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_11_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_11_states.size()) + " depth 11 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_11_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1011);
-    }
-
-    log_message("\n✅ Depth 11 state generation and update completed!");
-
-    // Save the new depth 11 states for future processing
-    ofstream file("updated_states_depth_11.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_11.txt");
-        return;
-    }
-    for (const auto &state : depth_11_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states9 = depth_11_states; 
-    log_message("\n📁 Depth 11 states saved to updated_states_depth_11.txt");
-}
-
-void depth_12_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 12 states from updated depth 11 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_12_states;
-
-    // Prepend 'a' to each state in updated_states11
-    for (const auto &state : updated_states11) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 12 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 12, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_12_states.find(fixed_state) == depth_12_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_12_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_12_states.size()) + " depth 12 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_12_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1100);
-    }
-
-    log_message("\n✅ Depth 12 state generation and update completed!");
-
-    // Save the new depth 12 states for future processing
-    ofstream file("updated_states_depth_12.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_12.txt");
-        return;
-    }
-    for (const auto &state : depth_12_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states9 = depth_12_states; 
-    log_message("\n📁 Depth 12 states saved to updated_states_depth_12.txt");
-}
-
-void depth_13_updater(const string &filename) {
-    log_message("\n🔄 Generating depth 13 states from updated depth 12 states...");
-
-    vector<string> moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
-                            "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
-                            "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
-
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> depth_13_states;
-
-    // Prepend 'a' to each state in updated_states11
-    for (const auto &state : updated_states12) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    log_message("\n✅ Processing " + to_string(updated_states_with_a.size()) + " depth 13 states...\n");
-
-    int batch_counter = 1;
-    int move_counter = 0;
-
-     for (const auto &state : updated_states_with_a) {
-
-        batch_counter++;
-
-        for (const string &move : moves) {
-            move_counter++;
-
-            // ✅ Apply move
-            string new_state = apply_move(state, move);
-
-            // ✅ Compute canonical form
-            string canonical_state = get_canonical_rotation(new_state);
-            //log_message("🟢 Canonical form: " + canonical_state);
-
-            // ✅ Extract without leading 'a'
-            string fixed_state = canonical_state.substr(1);
-            //log_message("🔵 Fixed canonical form: " + fixed_state);
-
-            //if (is_already_flagged_or_mirrored(canonical_state, filename, 13, {{'a', 7}, {'b', 8}, {'c', 8}})) {
-            //    continue;  // Skip adding/flagging this state
-            //}
-
-            if (depth_13_states.find(fixed_state) == depth_13_states.end()) {
-                //log_message("✅ New unique state added: " + fixed_state);
-            } else {
-                //log_message("⚠️ Duplicate state ignored: " + fixed_state);
-            }
-            depth_13_states.insert(fixed_state);
-        }
-    }
-
-    log_message("\n🔄 Updating " + to_string(depth_13_states.size()) + " depth 13 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : depth_13_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1101);
-    }
-
-    log_message("\n✅ Depth 13 state generation and update completed!");
-
-    // Save the new depth 13 states for future processing
-    ofstream file("updated_states_depth_13.txt", ios::out);
-    if (!file) {
-        log_message("❌ Error opening file: updated_states_depth_13.txt");
-        return;
-    }
-    for (const auto &state : depth_13_states) {
-        file << state << endl;
-    }
-    file.close();
-    updated_states9 = depth_13_states; 
-    log_message("\n📁 Depth 13 states saved to updated_states_depth_13.txt");
-}
-
-
-
-
-// ROTATION-UPDATERS (Not needed anymore (probably))
-
-void depth_2_rotation_updater(const string &filename) {
-    log_message("\nApplying all possible rotations to updated states from depth 2...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    // Prepend 'a' to each state in updated_states1 (which now contains depth 2 states)
-    for (const auto &state : updated_states1) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            log_message("Rotation: " + rotation + " | Resulting State: " + rotated_state + " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    log_message("\nUpdating rotated depth 2 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0010);
-    }
-    
-    log_message("\nRotation-based depth 2 updates completed!");
-}
-
-
-void depth_3_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 3 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    // Prepend 'a' to each state in updated_states2 (which now contains depth 3 states)
-    for (const auto &state : updated_states2) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 3 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    //log_message("\n🔄 Updating rotated depth 3 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0011);
-    }
-
-    //log_message("\n✅ Rotation-based depth 3 updates completed!");
-}
-
-void depth_4_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 4 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    // Prepend 'a' to each state in updated_states3 (which now contains depth 4 states)
-    for (const auto &state : updated_states3) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 4 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    //log_message("\n🔄 Updating rotated depth 4 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0100);
-    }
-
-    log_message("\n✅ Rotation-based depth 4 updates completed!");
-}
-
-void depth_5_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 5 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    for (const auto &state : updated_states5) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 5 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    //log_message("\n🔄 Updating rotated depth 5 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0101);
-    }
-
-    log_message("\n✅ Rotation-based depth 5 updates completed!");
-}
-
-
-void depth_6_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 6 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    for (const auto &state : updated_states6) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 6 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    //log_message("\n🔄 Updating rotated depth 6 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0110);
-    }
-
-    log_message("\n✅ Rotation-based depth 6 updates completed!");
-}
-
-void depth_7_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 7 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    for (const auto &state : updated_states7) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 7 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    log_message("\n🔄 Updating rotated depth 7 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b0111);
-    }
-
-    log_message("\n✅ Rotation-based depth 7 updates completed!");
-}
-
-void depth_8_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 8 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    for (const auto &state : updated_states6) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 8 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    log_message("\n🔄 Updating rotated depth 8 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1000);
-    }
-
-    log_message("\n✅ Rotation-based depth 8 updates completed!");
-}
-
-void depth_9_rotation_updater(const string &filename) {
-    log_message("\n🔄 Applying all possible rotations to updated depth 9 states...");
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    unordered_set<string> updated_states_with_a;
-    unordered_set<string> rotated_states;
-
-    for (const auto &state : updated_states9) {
-        updated_states_with_a.insert("a" + state);
-    }
-
-    for (const auto &state : updated_states_with_a) {
-        for (const string &rotation : rotations) {
-            string rotated_state = apply_move(state, rotation);
-            string fixed_rotated_state = fixLetterOrder(rotated_state).substr(1);
-            rotated_states.insert(fixed_rotated_state);
-
-            //log_message("Rotation Applied: " + rotation + 
-            //            " | Resulting Rotated Depth 9 State: " + rotated_state + 
-            //            " | Fixed: " + fixed_rotated_state);
-        }
-    }
-
-    log_message("\n🔄 Updating rotated depth 9 states in binary file...");
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-
-    for (const auto &state : rotated_states) {
-        __uint128_t index = multinomial_rank(state, letter_counts);
-        update_flag_in_file(filename, static_cast<uint32_t>(index), 0b1001);
-    }
-
-    log_message("\n✅ Rotation-based depth 9 updates completed!");
+    log_message("📁 Depth " + to_string(depth) + " states saved to " + output_txt_filename);
 }
 
 
@@ -1967,35 +643,26 @@ string y3_rotation(const string& combination) {
 }
 
 
-
 // Perform a "z-rotation" on the combination
 string z_rotation(const string& combination) {
     string combination_new = combination;
-
-    // Cycle 0 -> 13 -> 22 -> 7 -> 0
-    cycle(combination_new[0], combination_new[13], combination_new[22], combination_new[7]);
-    // Cycle 1 -> 14 -> 23 -> 4 -> 1
-    cycle(combination_new[1], combination_new[14], combination_new[23], combination_new[4]);
-    // Cycle 2 -> 15 -> 20 -> 5 -> 2
-    cycle(combination_new[2], combination_new[15], combination_new[20], combination_new[5]);
-    // Cycle 3 -> 12 -> 21 -> 6 -> 3
-    cycle(combination_new[3], combination_new[12], combination_new[21], combination_new[6]);
-    // Cycle 8 -> 9 -> 10 -> 11 -> 8
-    cycle(combination_new[8], combination_new[9], combination_new[10], combination_new[11]);
-    // Cycle 16 -> 19 -> 18 -> 17 -> 16
-    cycle(combination_new[16], combination_new[19], combination_new[18], combination_new[17]);
+    cycle(combination_new[0], combination_new[13], combination_new[22], combination_new[7]);    // Cycle 0 -> 13 -> 22 -> 7 -> 0
+    cycle(combination_new[1], combination_new[14], combination_new[23], combination_new[4]);    // Cycle 1 -> 14 -> 23 -> 4 -> 1
+    cycle(combination_new[2], combination_new[15], combination_new[20], combination_new[5]);    // Cycle 2 -> 15 -> 20 -> 5 -> 2
+    cycle(combination_new[3], combination_new[12], combination_new[21], combination_new[6]);    // Cycle 3 -> 12 -> 21 -> 6 -> 3
+    cycle(combination_new[8], combination_new[9], combination_new[10], combination_new[11]);    // Cycle 8 -> 9 -> 10 -> 11 -> 8
+    cycle(combination_new[16], combination_new[19], combination_new[18], combination_new[17]);  // Cycle 16 -> 19 -> 18 -> 17 -> 16
     return combination_new;
 }
 
 string z2_rotation(const string& combination) {
     string combination_new = z_rotation(combination);  // First transformation
-    return z_rotation(combination_new);               // Apply z_rotation again and return
+    return z_rotation(combination_new);             
 }
 
 string z3_rotation(const string& combination) { // Perform z3_rotation (z_rotation applied three times)
     return z_rotation(z2_rotation(combination));
 }
-
 
 // I did introduce mirrors here, but they are only used in my version 1 solver. Here, I made some experiments and while adding them reduces the states in each depth
 // by 10% (not scaling exponentially sadly), it is also 4x-ing the amount of time needed to update the lookup-table. I will not use mirror-symetry as of right now.
@@ -2004,7 +671,6 @@ string m_mirror(const string& combination) {
     string combination_new = combination;
 
     // 0 1, 2 3, 4 13, 5 12, 6 15, 7 14, 8 9, 10 11, 16 17, 18 19 + D-layer swaps
-
     swap(combination_new[0], combination_new[1]);
     swap(combination_new[2], combination_new[3]);
     swap(combination_new[4], combination_new[13]);
@@ -2018,14 +684,12 @@ string m_mirror(const string& combination) {
     swap(combination_new[20], combination_new[21]);
     swap(combination_new[22], combination_new[23]);
     return combination_new;
-
 }
 
 string s_mirror(const string& combination) {
     string combination_new = combination;
 
     // 0 3, 1 2, 4 5, 6 7, 8 17, 9 16, 10 19, 11 18, 12 13, 14 15 + D-layer swaps
-
     swap(combination_new[0], combination_new[3]);
     swap(combination_new[1], combination_new[2]);
     swap(combination_new[4], combination_new[5]);
@@ -2046,7 +710,6 @@ string e_mirror(const string& combination) {
     string combination_new = combination;
 
     //  0 23, 1 22, 2 21, 3 20, 4 7, 5 6, 8 11, 9 10, 12 15, 13 14, 16 19, 17 18 + D-layer swaps
-
     swap(combination_new[0], combination_new[23]);
     swap(combination_new[1], combination_new[22]);
     swap(combination_new[2], combination_new[21]);
@@ -2064,58 +727,39 @@ string e_mirror(const string& combination) {
 }
 
 string R(const string& combination) {
-    string combination_new = combination;
-    // Cycle 12 -> 13 -> 14 -> 15 -> 12
+    string combination_new = combination; // Cycle 12 -> 13 -> 14 -> 15 -> 12
     cycle(combination_new[12], combination_new[13], combination_new[14], combination_new[15]);
     return combination_new;
 }
 
-string R2(const string& combination) {
-    string combination_new = R(combination);  // First transformation
-    return R(combination_new);               // Apply R again and return
-}
-
-string R3(const string& combination) { // Perform R3 (R applied three times)
-    return R(R2(combination));
-}
+string R2(const string& combination) {string combination_new = R(combination);  return R(combination_new);}
+string R3(const string& combination) {return R(R2(combination));}
 
 //note that uncapitalized r is not a slice move, but equivalent to Rw in some literature. This applies to all uncapiatalized moves
 
 string r(const string& combination) {
     string combination_new = combination;
-    // Cycle 12 -> 13 -> 14 -> 15 -> 12
     cycle(combination_new[12], combination_new[13], combination_new[14], combination_new[15]);
-    // Cycle 1 -> 19 -> 21 -> 9 -> 1
     cycle(combination_new[1], combination_new[19], combination_new[21], combination_new[9]);
-    // Cycle 2 -> 16 -> 22 -> 10 -> 2
     cycle(combination_new[2], combination_new[16], combination_new[22], combination_new[10]);
     return combination_new;
 }
 
-string r2(const string& combination) {
-    string combination_new = r(combination);  // First transformation
-    return r(combination_new);               // Apply R again and return
-}
-
-string r3(const string& combination) { // Perform R3 (R applied three times)
-    return r(r2(combination));
-}
+string r2(const string& combination) {string combination_new = r(combination); return r(combination_new);}
+string r3(const string& combination) {return r(r2(combination));}
 
 string L(const string& combination) {
-    string combination_new = combination;
-    // Cycle 4 -> 5 -> 6 -> 7 -> 4
+    string combination_new = combination;     // Cycle 4 -> 5 -> 6 -> 7 -> 4
     cycle(combination_new[4], combination_new[5], combination_new[6], combination_new[7]);
     return combination_new;
 }
 
 string L2(const string& combination) {
-    string combination_new = L(combination);  // First transformation
-    return L(combination_new);               // Apply L again and return
+    string combination_new = L(combination);  
+    return L(combination_new);               
 }
 
-string L3(const string& combination) { // Perform L3 (L applied three times)
-    return L(L2(combination));
-}
+string L3(const string& combination) {return L(L2(combination));}
 
 string l(const string& combination) {
     string combination_new = r(combination);
@@ -2218,12 +862,9 @@ string U3(const string& combination) { // Perform F3 (F applied three times)
 
 string u(const string& combination) {
     string combination_new = combination;
-    // Cycle 0 -> 1 -> 2 -> 3 -> 0
-    cycle(combination_new[0], combination_new[1], combination_new[2], combination_new[3]);
-    // Cycle 4 -> 16 -> 12 -> 8 -> 4
-    cycle(combination_new[4], combination_new[16], combination_new[12], combination_new[8]);
-    // Cycle 5 -> 17 -> 13 -> 9 -> 5
-    cycle(combination_new[5], combination_new[17], combination_new[13], combination_new[9]);
+    cycle(combination_new[0], combination_new[1], combination_new[2], combination_new[3]);     // Cycle 0 -> 1 -> 2 -> 3 -> 0
+    cycle(combination_new[4], combination_new[16], combination_new[12], combination_new[8]);    // Cycle 4 -> 16 -> 12 -> 8 -> 4
+    cycle(combination_new[5], combination_new[17], combination_new[13], combination_new[9]);    // Cycle 5 -> 17 -> 13 -> 9 -> 5
     return combination_new;
 }
 
@@ -2403,8 +1044,6 @@ string normalize_solution(const string& solution) {
 }
 
 
-
-
 bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
                       const string &filename, uint32_t current_flag, 
                       map<char, int> &letter_counts, int depth, 
@@ -2467,6 +1106,10 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
             uint32_t extracted_flag = flag & 0xF;
             log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
 
+            //if (current_flag <= 8 && extracted_flag >= current_flag) { // might go higher here
+            //    continue; // ✂️ Enforce strictly decreasing rule
+            //}
+
             if (extracted_flag < new_min_flag) {
                 log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
                 new_min_flag = extracted_flag;
@@ -2517,6 +1160,122 @@ bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &par
     return recursive_expand(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths);
 }
 
+
+bool recursive_expand_less_logs(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
+                      const string &filename, uint32_t current_flag, 
+                      map<char, int> &letter_counts, int depth, 
+                      vector<vector<string>> &successful_paths) {
+    
+    if (current_flag == 0) {
+        log_message("\n🎯 Reached depth 0. ✅ Solution found!");
+        return true;
+    }
+
+    vector<string> moves = {
+        "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+        "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
+        "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
+    };
+
+    //log_message("\n\n🌳 [Depth " + to_string(depth) + "] Expanding with Flag = " + to_string(current_flag));
+    //log_message("🌿 Number of parent states: " + to_string(parent_states.size()));
+
+    uint32_t new_min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
+
+    int parent_count = 0;
+    for (const auto &[parent_state, history, rotation_history] : parent_states) {
+        ++parent_count;
+        //log_message("\n🌲 Parent #" + to_string(parent_count) + ": " + parent_state);
+        //log_message("  ├─ Path so far: " + (history.empty() ? "(none)" : history.back()));
+        //log_message("  └─ Rotations: " + (rotation_history.empty() ? "(none)" : rotation_history.back()));
+
+        int move_index = 0;
+        for (const string &move : moves) {
+            ++move_index;
+            //log_message("    ├─ 🔀 Move #" + to_string(move_index) + ": " + move);
+
+            string new_state = "a" + parent_state;
+            new_state = apply_move(new_state, move);
+            //log_message("    │   ├─ State after move: " + new_state);
+
+            auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
+            string fixed_state = canonical_state.substr(1);
+
+            //log_message("    │   ├─ Canonical: " + canonical_state);
+            //log_message("    │   ├─ Applied Rotation: " + applied_rotation);
+            //log_message("    │   └─ Final fixed state: " + fixed_state);
+
+            __uint128_t index = multinomial_rank(fixed_state, letter_counts);
+
+            uint32_t flag = 0;
+            ifstream input_file(filename, ios::binary);
+            if (!input_file) {
+                log_message("❌ Error opening file: " + filename);
+                return false;
+            }
+
+            streampos file_position = index * sizeof(uint32_t);
+            input_file.seekg(file_position, ios::beg);
+            input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
+            input_file.close();
+
+            uint32_t extracted_flag = flag & 0xF;
+            //log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
+
+            //if (current_flag <= 8 && extracted_flag >= current_flag) { // might go higher here
+            //    continue; // ✂️ Enforce strictly decreasing rule
+            //}
+
+            if (extracted_flag < new_min_flag) {
+                //log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
+                new_min_flag = extracted_flag;
+                good_paths_next.clear();
+            }
+
+            if (extracted_flag == new_min_flag) {
+                //log_message("    │   ✅ Matching min flag, storing path.");
+
+                vector<string> new_history = history;
+                new_history.push_back(move);
+
+                vector<string> new_rotation_history = rotation_history;
+                new_rotation_history.push_back(applied_rotation);
+
+                good_paths_next.push_back({fixed_state, new_history, new_rotation_history});
+            }
+
+            if (extracted_flag == 0) {
+                log_message("    🎉 FOUND GOAL STATE! Building solution path...");
+
+                vector<string> new_history = history;
+                new_history.push_back(move);
+
+                vector<string> new_rotation_history = rotation_history;
+                new_rotation_history.push_back(applied_rotation);
+
+                vector<string> solution_path;
+                for (size_t i = 0; i < new_history.size(); ++i) {
+                    solution_path.push_back(new_history[i] + " → " + new_rotation_history[i]);
+                }
+
+                successful_paths.push_back(solution_path);
+
+                string final_solution;
+                for (size_t i = 0; i < new_history.size(); ++i) {
+                    final_solution += new_rotation_history[i] + " " + new_history[i] + " ";
+                }
+                final_solution.pop_back();
+                final_solution += " (depth=" + to_string(new_history.size()) + ")";
+
+                log_message("    ✅ Final Solution: " + final_solution);
+            }
+        }
+    }
+
+    log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
+    return recursive_expand_less_logs(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths);
+}
 
 // Main function to solve a scramble using precomputed binary flags
 void solve_scramble(const string &scramble, const string &filename, bool print_only_first_solution = true) {
@@ -2629,6 +1388,115 @@ void solve_scramble(const string &scramble, const string &filename, bool print_o
     }
 }
 
+void solve_scramble_less_logs(const string &scramble, const string &filename, bool print_only_first_solution = true) {
+    log_message("\n🔍 Solving scramble: " + scramble);
+
+    string solved_state = "aaaabbbbccccbbbbccccaaaa";
+    string scrambled_state = translate_scramble_to_moves(scramble);
+    log_message("\n🔄 Scrambled State: " + scrambled_state);
+
+    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+    vector<tuple<string, string, string>> all_rotations_for_this_scramble;
+
+    for (const string &rotation : rotations) {
+        string rotated_state = apply_move(scrambled_state, rotation);
+        string fixed_rotated_state = fixLetterOrder(rotated_state);
+        all_rotations_for_this_scramble.push_back({rotation, rotated_state, fixed_rotated_state});
+    }
+
+    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
+    uint32_t min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths;
+
+    for (const auto &[rotation, state, fixed_state] : all_rotations_for_this_scramble) {
+        string canonical_state = fixed_state.substr(1);
+        __uint128_t index = multinomial_rank(canonical_state, letter_counts);
+
+        uint32_t flag = 0;
+        ifstream input_file(filename, ios::binary);
+        if (!input_file) {
+            log_message("❌ Error opening file: " + filename);
+            return;
+        }
+
+        streampos file_position = index * sizeof(uint32_t);
+        input_file.seekg(file_position, ios::beg);
+        input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
+        input_file.close();
+
+        uint32_t extracted_flag = flag & 0xF;
+
+        if (extracted_flag < min_flag) {
+            min_flag = extracted_flag;
+            good_paths.clear();
+        }
+        if (extracted_flag == min_flag) {
+            good_paths.push_back({canonical_state, {rotation}, {rotation}});
+        }
+    }
+
+    vector<vector<string>> successful_paths;
+    recursive_expand_less_logs(good_paths, filename, min_flag, letter_counts, 1, successful_paths);
+
+    log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
+    bool first_solution_logged = false;
+
+    for (const auto &path : successful_paths) {
+        string formatted_solution = "";
+        bool is_first_entry = true;
+
+        string initial_rotation = path[0].substr(0, 2);
+        formatted_solution = initial_rotation;
+
+        for (const auto &step : path) {
+            size_t arrow_pos = step.find(" → ");
+            if (arrow_pos != string::npos) {
+                string move = step.substr(0, arrow_pos);
+                string rotation = step.substr(arrow_pos + 4);
+
+                if (is_first_entry) {
+                    is_first_entry = false;
+                } else {
+                    formatted_solution += move + " " + rotation + " ";
+                }
+            }
+        }
+
+        if (!formatted_solution.empty()) {
+            formatted_solution.pop_back();
+        }
+
+        string adjusted_solution = normalize_solution(formatted_solution); // Optional
+
+        if (!print_only_first_solution || !first_solution_logged) {
+            log_message("Final Solution: " + formatted_solution);
+        }
+
+        if (!first_solution_logged) {
+            first_solution_logged = true;
+
+            // Count non-rotation moves
+            istringstream iss(formatted_solution);
+            int move_count = 0;
+            string token;
+            vector<string> rotation_prefixes = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+
+            while (iss >> token) {
+                if (find(rotation_prefixes.begin(), rotation_prefixes.end(), token) != rotation_prefixes.end()) {
+                    continue;
+                }
+                move_count++;
+            }
+
+            if (move_count >= MAX_MOVES) move_count = MAX_MOVES - 1;
+            move_histogram[move_count]++;
+        }
+
+        if (print_only_first_solution) {
+            break; // ✅ Stop after printing the first solution
+        }
+    }
+}
 
 bool recursive_expand_fast(
     vector<tuple<string, vector<string>, vector<string>>> &parent_states,
@@ -2638,7 +1506,7 @@ bool recursive_expand_fast(
     int depth,
     vector<vector<string>> &successful_paths,
     bool only_first_solution,
-    unordered_set<string> &visited_states  // NEW
+    unordered_set<string> &visited_states
 ) {
     if (current_flag == 0) {
         log_message("\n🎯 Reached depth 0. ✅ Solution found!");
@@ -2662,7 +1530,6 @@ bool recursive_expand_fast(
             auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
             string fixed_state = canonical_state.substr(1);
 
-            // ✅ Skip already visited states
             if (visited_states.count(fixed_state)) continue;
             visited_states.insert(fixed_state);
 
@@ -2681,6 +1548,10 @@ bool recursive_expand_fast(
             input_file.close();
 
             uint32_t extracted_flag = flag & 0xF;
+
+            if (current_flag <= 8 && extracted_flag >= current_flag) { // might go higher here
+                continue; // ✂️ Enforce strictly decreasing rule
+            }
 
             if (extracted_flag < new_min_flag) {
                 new_min_flag = extracted_flag;
@@ -2711,7 +1582,11 @@ bool recursive_expand_fast(
 
     log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
 
-    // ✅ At depth 15, allow full expansion; otherwise explore one path
+    if (good_paths_next.empty()) {
+        log_message("⛔ No valid path forward (strict depth rule). Scramble will be skipped.");
+        return false;
+    }
+
     if (only_first_solution && new_min_flag != 15 && !good_paths_next.empty()) {
         vector<tuple<string, vector<string>, vector<string>>> single_path = { good_paths_next[0] };
         return recursive_expand_fast(single_path, filename, new_min_flag, letter_counts, depth + 1, successful_paths, true, visited_states);
@@ -2719,6 +1594,7 @@ bool recursive_expand_fast(
 
     return recursive_expand_fast(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths, only_first_solution, visited_states);
 }
+
 void solve_scramble_fast(const string &scramble, const string &filename, bool print_only_first_solution = true) {
     log_message("\n🔍 Solving scramble: " + scramble);
 
@@ -2768,7 +1644,18 @@ void solve_scramble_fast(const string &scramble, const string &filename, bool pr
 
     vector<vector<string>> successful_paths;
     unordered_set<string> visited_states;
-    recursive_expand_fast(good_paths, filename, min_flag, letter_counts, 1, successful_paths, print_only_first_solution, visited_states);
+    bool success = recursive_expand_fast(good_paths, filename, min_flag, letter_counts, 1, successful_paths, print_only_first_solution, visited_states);
+
+    if (!success) {
+        // ❌ Write failing scramble to scramble2.txt
+        ofstream fail_file("scrambles_dropout.txt", ios::app);
+        if (fail_file) {
+            fail_file << scramble << "\n";
+        } else {
+            log_message("⚠️ Could not write to scrambles_dropout.txt");
+        }
+        return; // Stop here since no path was found
+    }
 
     log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
     bool first_solution_logged = false;
@@ -2818,12 +1705,12 @@ void solve_scramble_fast(const string &scramble, const string &filename, bool pr
 
             if (move_count >= MAX_MOVES) move_count = MAX_MOVES - 1;
             move_histogram[move_count]++;
+            log_message("✅ Move Count (no rotations): " + to_string(move_count));
         }
 
         if (print_only_first_solution) break;
     }
 }
-
 
 
 void print_move_histogram() {
@@ -2849,11 +1736,35 @@ void solve_scrambles(const string &scramble_list_file, const string &binary_file
         if (line.empty()) continue;  // Skip blank lines
 
         scramble_count++;
+        log_message("\n\n==========🧩 Solving scramble #" + to_string(scramble_count) + ": " + line + "==========\n");
+        solve_scramble(line, binary_filename);
+    }
+
+    infile.close();
+
+    log_message("\n✅ Finished solving " + to_string(scramble_count) + " scrambles.");
+    print_move_histogram();
+}
+
+void solve_scrambles_less_logs(const string &scramble_list_file, const string &binary_filename) {
+    ifstream infile(scramble_list_file);
+    if (!infile) {
+        cerr << "❌ Error opening scramble list file: " << scramble_list_file << endl;
+        return;
+    }
+
+    string line;
+    int scramble_count = 0;
+
+    while (getline(infile, line)) {
+        if (line.empty()) continue;  // Skip blank lines
+
+        scramble_count++;
         log_message("\n\n=======================");
         log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
         log_message("=======================\n");
 
-        solve_scramble(line, binary_filename);
+        solve_scramble_less_logs(line, binary_filename);
     }
 
     infile.close();
@@ -2880,7 +1791,7 @@ void solve_scrambles_fast(const string &scramble_list_file, const string &binary
         log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
         log_message("=======================\n");
 
-        solve_scramble_fast(line, binary_filename);
+        solve_scramble_fast(line, binary_filename, false);
     }
 
     infile.close();
@@ -2890,27 +1801,22 @@ void solve_scrambles_fast(const string &scramble_list_file, const string &binary
 
 
 
+
+
+
 // Main function
 int main() {
    auto start_time = high_resolution_clock::now();
    precompute_factorials();
    vector<string> moves = {
-       "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'", 
-       "U", "U2", "U'", "D", "D2", "D'", 
-       "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", 
-       "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", 
-       "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
-   };
+       "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'", "U", "U2", "U'", "D", "D2", "D'", 
+       "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'", "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"};
 
-
-
-
-
-    string bin_filename = "2100mio.bin";
+    string bin_filename = "2100mio_april2.bin";
     // 1)
 
-    binary_generator(0, 2100000000, "2100mio.bin"); 
-    binary_viewer(bin_filename, 100);
+    binary_generator(0, 2100000000, "2100mio_april2.bin"); 
+    binary_viewer(bin_filename, 1000);
 
 
     // 2)
@@ -2920,14 +1826,14 @@ int main() {
 
 
     depth_0_updater(bin_filename);
-    depth_1_updater(bin_filename);
-    depth_2_updater(bin_filename);
-    depth_3_updater(bin_filename);
-    depth_4_updater(bin_filename);  
-    depth_5_updater(bin_filename);  
-    depth_6_updater(bin_filename);
-    depth_7_updater(bin_filename);
-    ////depth_8_updater(bin_filename);
+    depth_updater(1, bin_filename, updated_states0, updated_states1, "updated_states_depth_1_april3.txt");
+    depth_updater(2, bin_filename, updated_states1, updated_states2, "updated_states_depth_2_april3.txt");
+    depth_updater(3, bin_filename, updated_states2, updated_states3, "updated_states_depth_3_april3.txt");
+    depth_updater(4, bin_filename, updated_states3, updated_states4, "updated_states_depth_4_april3.txt");
+    depth_updater(5, bin_filename, updated_states4, updated_states5, "updated_states_depth_5_april3.txt");
+    depth_updater(6, bin_filename, updated_states5, updated_states6, "updated_states_depth_6_april3.txt");
+    depth_updater(7, bin_filename, updated_states6, updated_states7, "updated_states_depth_7_april3.txt");
+    depth_updater(8, bin_filename, updated_states7, updated_states8, "updated_states_depth_8_april3.txt");
     //....
 
 
@@ -2938,22 +1844,26 @@ int main() {
     // 3) here you can try out the 4 variants of the solver:
 
     // Fast version (only explores one optimal branch) speed: 0.7sec
-    solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
+    //solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
+    //solve_scramble_fast("U B L B2 R2 F2 D2 L U2 F2 R' F2 L U R2 F B L2 B' U' D' Fw2 Uw2 R' F2 U Fw2 U' D R' Uw2 F2 B2 R2 Fw D Uw2 R' F2 B' Fw' Rw' F' U2 Rw U2 ", bin_filename, 0);
 
     // Full-exploration version (slower but returns every path) speed: 16sec (a big chunk of that is due to documenting the entire branching-process in the log.txt)
     //solve_scramble("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
-    
+    //solve_scramble("U B L B2 R2 F2 D2 L U2 F2 R' F2 L U R2 F B L2 B' U' D' Fw2 Uw2 R' F2 U Fw2 U' D R' Uw2 F2 B2 R2 Fw D Uw2 R' F2 B' Fw' Rw' F' U2 Rw U2", bin_filename, 0);
+
     // Uncomment to try out Batchsolver (fast)
-    //solve_scrambles_fast("scrambles.txt", bin_filename);
+    //solve_scrambles_less_logs("scrambles_dropout.txt", bin_filename);
     
     // Uncomment to try out Batchsolver (full-branch)
     // I really do not recommend running this with many scrambles (like in the scramble.txt currently) due to the huge size that log.txt will have
-    //solve_scrambles("scrambles.txt", bin_filename);
+    
+    ///solve_scrambles_fast("scrambles.txt", bin_filename);
 
 
 
 
-    // miscellaneous:
+
+    // miscellaneous
 
     // Uncomment to test the multinomial_rank-hashing here. Please be aware that the input is a string for the cubestate where the first a is already taken away. So the input
     // must have been adjusted with fixLetterOrder(.)
