@@ -18,12 +18,8 @@ ofstream log_file("log.txt", ios::out); // Log file for all printed outputs
 
 const int MAX_MOVES = 20;
 int move_histogram[MAX_MOVES] = {0};
-
 int solution_counter = 0;  // Global counter to track the number of solutions found
-int solution_counter1 = 0;  
-int solution_counter2 = 0;  
-int solution_counter3 = 0;  
-int solution_counter4 = 0;  
+
 
 // Global variable to store updated states
 unordered_set<string> updated_states0, updated_states1, updated_states2, updated_states3, updated_states4,updated_states5,
@@ -114,60 +110,6 @@ bool is_already_flagged_or_mirrored(const string &canonical_state, const string 
     return false;
 }
 
-// not used anymore. It was good for checking whether the bin-file access worked.
-void find_in_bin_file(const string &input_string, const string &filename) {
-    // Compute multinomial rank
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-    __uint128_t rank = multinomial_rank(input_string, letter_counts);
-    cout << "Computed rank: " << uint128_to_string(rank) << endl;
-
-    // Convert rank to 31-bit binary representation
-    string rank_binary = bitset<31>(static_cast<uint32_t>(rank)).to_string();
-    cout << "Binary representation: " << rank_binary << endl;
-
-    // Calculate correct file position
-    streampos file_position = rank * sizeof(uint32_t);
-
-    ifstream input_file(filename, ios::binary);
-    if (!input_file) {
-        cerr << "Error opening file: " << filename << endl;
-        return;
-    }
-
-    uint32_t value;
-    string previous_line, match_line, next_line;
-
-    // Read the previous entry (if not the first)
-    if (file_position >= static_cast<streamoff>(sizeof(uint32_t))) {
-        input_file.seekg(file_position - static_cast<streamoff>(sizeof(uint32_t)), ios::beg);
-        input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
-        previous_line = bitset<31>(value).to_string();
-    } else {
-        previous_line = "N/A (No previous entry)";
-    }
-
-    // Read the matching entry
-    input_file.seekg(file_position, ios::beg);
-    input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
-    match_line = bitset<31>(value).to_string();
-
-    // Read the next entry
-    if (input_file.read(reinterpret_cast<char*>(&value), sizeof(uint32_t))) {
-        next_line = bitset<31>(value).to_string();
-    } else {
-        next_line = "N/A (No next entry)";
-    }
-
-    input_file.close();
-
-    // Print results
-    cout << "\nFound rank at computed file position: " << file_position << " bytes" << endl;
-    if (!previous_line.empty()) cout << "Previous: " << previous_line << endl;
-    cout << "Match:    " << match_line << endl;
-    if (!next_line.empty()) cout << "Next:     " << next_line << endl;
-}
-
-
 // this function is needed because the two editors / VSC-extensions for opening .bin-files that I had tried, were not good. So I inserted a "reader"-function.
 void binary_viewer(const string &filename, int num_entries) {
     ifstream input_file(filename, ios::binary);
@@ -179,56 +121,6 @@ void binary_viewer(const string &filename, int num_entries) {
     cout << "\nReading first " << num_entries << " entries from " << filename << "...\n";
 
     for (int i = 0; i < num_entries; ++i) {
-        uint32_t packed_value;
-        input_file.read(reinterpret_cast<char*>(&packed_value), sizeof(uint32_t));
-        if (input_file.eof()) break;
-
-        // Extract 31-bit number and 4-bit flag
-        uint32_t value_part = packed_value >> 4;   // Right shift to remove the flag
-        uint32_t flag_part = packed_value & 0xF;   // Mask last 4 bits for flag
-
-        // Convert to binary representation
-        string binary_representation = bitset<31>(value_part).to_string();
-        string flag_representation = bitset<4>(flag_part).to_string();
-
-        cout << "Binary: " << binary_representation 
-             << " | Flag: " << flag_representation 
-             << " | Decimal: " << value_part << endl;
-    }
-
-    input_file.close();
-}
-
-// same thing as above but for the last entries. However, reading the end of the file is somewhat useless at this point, because the look-up-table that I generate has
-// 2100 mio entries, while the last reachable HTR-C-cubestate in my introduced notation-system is at about 2050mio. I had included the rest as a buffer. (should fix that later, now that I think about it)
-void binary_viewer_last_n_entries(const string &filename, int num_entries) {
-    ifstream input_file(filename, ios::binary);
-    if (!input_file) {
-        cerr << "Error opening file: " << filename << endl;
-        return;
-    }
-
-    // Get the file size
-    input_file.seekg(0, ios::end);
-    streampos file_size = input_file.tellg();
-    int entry_size = sizeof(uint32_t);
-
-    // Calculate the total number of entries in the file
-    int total_entries = file_size / entry_size;
-    if (total_entries == 0) {
-        cerr << "Error: File is empty or corrupted." << endl;
-        return;
-    }
-
-    // Determine the starting position for reading the last `num_entries`
-    int start_index = max(0, total_entries - num_entries);
-    streampos start_position = start_index * entry_size;
-
-    input_file.seekg(start_position, ios::beg);
-
-    cout << "\nReading last " << num_entries << " entries from " << filename << "...\n";
-
-    for (int i = start_index; i < total_entries; ++i) {
         uint32_t packed_value;
         input_file.read(reinterpret_cast<char*>(&packed_value), sizeof(uint32_t));
         if (input_file.eof()) break;
@@ -272,38 +164,19 @@ void update_flag_in_file(const string &filename, uint32_t index, uint32_t new_fl
     file.read(reinterpret_cast<char*>(&entry), sizeof(uint32_t));
 
     if (file.eof()) {
-        log_message("Error: Index out of range (attempted index: " + to_string(index) + ")");
-        file.close();
+        log_message("Error: Index out of range (attempted index: " + to_string(index) + ")"); file.close();
         return;
     }
-
     // Extract the value part (first 31 bits)
     uint32_t value_part = entry >> bit_length_2;
     uint32_t current_flag = entry & 0xF;  // Extract the last 4 bits (flag)
-
-    
     stringstream log_info;
 
-    //log_info << "Hashindex: " << index
-    //    << " | Binary: " << bitset<31>(value_part).to_string()
-    //    << " | Current Flag: " << bitset<4>(current_flag).to_string()
-    //    << " | New Flag: " << bitset<4>(new_flag).to_string();
-
-    // Only update if the current flag is 1111 (binary) = 15 (decimal)
     if (current_flag == 0b1111) {
         uint32_t updated_entry = (value_part << bit_length_2) | (new_flag & 0xF);
-
-        // Write back the updated entry
         file.seekp(file_position, ios::beg);
         file.write(reinterpret_cast<const char*>(&updated_entry), sizeof(uint32_t));
-
-        //log_info << "  ✅ Flag updated!";
-
-    } else {
-        
-        //log_info << "  ⚠️ Already upd.";
     }
-    //log_message(log_info.str());
     file.close();
     
 }
@@ -474,7 +347,6 @@ string apply_move(const string& state, const string& move) {
     if (move == "B") return B(state);
     if (move == "B2") return B2(state);
     if (move == "B'") return B3(state);
-
     if (move == "U") return U(state);
     if (move == "U2") return U2(state);
     if (move == "U'") return U3(state);
@@ -563,8 +435,6 @@ bool startsWithAllowedPrefix(const string& combination) {
     return false;
 }
 
-
-
     // The following part has many redundant swaps and cylces, but it is easier to understand and verify and also faster to 
     // implement at this point in time. Will optimize later.
 
@@ -572,19 +442,12 @@ bool startsWithAllowedPrefix(const string& combination) {
 // Perform an "x-rotation" on the combination
 string x_rotation(const string& combination) {
     string combination_new = combination;
-    // Cycle 4 -> 7 -> 6 -> 5 -> 4
-    cycle(combination_new[4], combination_new[7], combination_new[6], combination_new[5]);
-    // Cycle 12 -> 13 -> 14 -> 15 -> 12
-    cycle(combination_new[12], combination_new[13], combination_new[14], combination_new[15]);
-    // Cycle 0 -> 18 -> 20 -> 8 -> 0
-    cycle(combination_new[0], combination_new[18], combination_new[20], combination_new[8]);
-    // Cycle 1 -> 19 -> 21 -> 9 -> 1
-    cycle(combination_new[1], combination_new[19], combination_new[21], combination_new[9]);
-    // Cycle 2 -> 16 -> 22 -> 10 -> 2
-    cycle(combination_new[2], combination_new[16], combination_new[22], combination_new[10]);
-    // Cycle 3 -> 17 -> 23 -> 11 -> 3
-    cycle(combination_new[3], combination_new[17], combination_new[23], combination_new[11]);
-
+    cycle(combination_new[4], combination_new[7], combination_new[6], combination_new[5]);    // Cycle 4 -> 7 -> 6 -> 5 -> 4
+    cycle(combination_new[12], combination_new[13], combination_new[14], combination_new[15]);    // Cycle 12 -> 13 -> 14 -> 15 -> 12
+    cycle(combination_new[0], combination_new[18], combination_new[20], combination_new[8]);    // Cycle 0 -> 18 -> 20 -> 8 -> 0
+    cycle(combination_new[1], combination_new[19], combination_new[21], combination_new[9]);    // Cycle 1 -> 19 -> 21 -> 9 -> 1
+    cycle(combination_new[2], combination_new[16], combination_new[22], combination_new[10]);    // Cycle 2 -> 16 -> 22 -> 10 -> 2
+    cycle(combination_new[3], combination_new[17], combination_new[23], combination_new[11]);    // Cycle 3 -> 17 -> 23 -> 11 -> 3
     return combination_new;
 }
 
@@ -600,27 +463,18 @@ string x3_rotation(const string& combination) { // Perform x3_rotation (x_rotati
 // Perform a "y-rotation" on the combination
 string y_rotation(const string& combination) {
     string combination_new = combination;
-
-    // Cycle 0 -> 1 -> 2 -> 3 -> 0
-    cycle(combination_new[0], combination_new[1], combination_new[2], combination_new[3]);
-    // Cycle 4 -> 16 -> 12 -> 8 -> 4
-    cycle(combination_new[4], combination_new[16], combination_new[12], combination_new[8]);
-    // Cycle 5 -> 17 -> 13 -> 9 -> 5
-    cycle(combination_new[5], combination_new[17], combination_new[13], combination_new[9]);
-    // Cycle 6 -> 18 -> 14 -> 10 -> 6
-    cycle(combination_new[6], combination_new[18], combination_new[14], combination_new[10]);
-    // Cycle 7 -> 19 -> 15 -> 11 -> 7
-    cycle(combination_new[7], combination_new[19], combination_new[15], combination_new[11]);
-    // Cycle 20 -> 23 -> 22 -> 21 -> 20
-    cycle(combination_new[20], combination_new[23], combination_new[22], combination_new[21]);
+    cycle(combination_new[0], combination_new[1], combination_new[2], combination_new[3]);    // Cycle 0 -> 1 -> 2 -> 3 -> 0
+    cycle(combination_new[4], combination_new[16], combination_new[12], combination_new[8]);    // Cycle 4 -> 16 -> 12 -> 8 -> 4
+    cycle(combination_new[5], combination_new[17], combination_new[13], combination_new[9]);    // Cycle 5 -> 17 -> 13 -> 9 -> 5
+    cycle(combination_new[6], combination_new[18], combination_new[14], combination_new[10]);    // Cycle 6 -> 18 -> 14 -> 10 -> 6
+    cycle(combination_new[7], combination_new[19], combination_new[15], combination_new[11]);    // Cycle 7 -> 19 -> 15 -> 11 -> 7
+    cycle(combination_new[20], combination_new[23], combination_new[22], combination_new[21]);    // Cycle 20 -> 23 -> 22 -> 21 -> 20
     return combination_new;
 
 }
 
-
 string y2_rotation(const string& combination) {
     string combination_new = combination;
-
     swap(combination_new[0], combination_new[2]);
     swap(combination_new[1], combination_new[3]);
     swap(combination_new[4], combination_new[12]);
@@ -1176,36 +1030,21 @@ bool recursive_expand_less_logs(vector<tuple<string, vector<string>, vector<stri
         "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'", "Lw", "Lw2", "Lw'",
         "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
     };
-
-    //log_message("\n\n🌳 [Depth " + to_string(depth) + "] Expanding with Flag = " + to_string(current_flag));
-    //log_message("🌿 Number of parent states: " + to_string(parent_states.size()));
-
     uint32_t new_min_flag = UINT32_MAX;
     vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
 
     int parent_count = 0;
     for (const auto &[parent_state, history, rotation_history] : parent_states) {
         ++parent_count;
-        //log_message("\n🌲 Parent #" + to_string(parent_count) + ": " + parent_state);
-        //log_message("  ├─ Path so far: " + (history.empty() ? "(none)" : history.back()));
-        //log_message("  └─ Rotations: " + (rotation_history.empty() ? "(none)" : rotation_history.back()));
-
         int move_index = 0;
         for (const string &move : moves) {
             ++move_index;
-            //log_message("    ├─ 🔀 Move #" + to_string(move_index) + ": " + move);
 
             string new_state = "a" + parent_state;
             new_state = apply_move(new_state, move);
-            //log_message("    │   ├─ State after move: " + new_state);
 
             auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
             string fixed_state = canonical_state.substr(1);
-
-            //log_message("    │   ├─ Canonical: " + canonical_state);
-            //log_message("    │   ├─ Applied Rotation: " + applied_rotation);
-            //log_message("    │   └─ Final fixed state: " + fixed_state);
-
             __uint128_t index = multinomial_rank(fixed_state, letter_counts);
 
             uint32_t flag = 0;
@@ -1221,20 +1060,13 @@ bool recursive_expand_less_logs(vector<tuple<string, vector<string>, vector<stri
             input_file.close();
 
             uint32_t extracted_flag = flag & 0xF;
-            //log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
-
-            //if (current_flag <= 8 && extracted_flag >= current_flag) { // might go higher here
-            //    continue; // ✂️ Enforce strictly decreasing rule
-            //}
 
             if (extracted_flag < new_min_flag) {
-                //log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
                 new_min_flag = extracted_flag;
                 good_paths_next.clear();
             }
 
             if (extracted_flag == new_min_flag) {
-                //log_message("    │   ✅ Matching min flag, storing path.");
 
                 vector<string> new_history = history;
                 new_history.push_back(move);
@@ -1327,116 +1159,6 @@ void solve_scramble(const string &scramble, const string &filename, bool print_o
 
     vector<vector<string>> successful_paths;
     recursive_expand(good_paths, filename, min_flag, letter_counts, 1, successful_paths);
-
-    log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
-    bool first_solution_logged = false;
-
-    for (const auto &path : successful_paths) {
-        string formatted_solution = "";
-        bool is_first_entry = true;
-
-        string initial_rotation = path[0].substr(0, 2);
-        formatted_solution = initial_rotation;
-
-        for (const auto &step : path) {
-            size_t arrow_pos = step.find(" → ");
-            if (arrow_pos != string::npos) {
-                string move = step.substr(0, arrow_pos);
-                string rotation = step.substr(arrow_pos + 4);
-
-                if (is_first_entry) {
-                    is_first_entry = false;
-                } else {
-                    formatted_solution += move + " " + rotation + " ";
-                }
-            }
-        }
-
-        if (!formatted_solution.empty()) {
-            formatted_solution.pop_back();
-        }
-
-        string adjusted_solution = normalize_solution(formatted_solution); // Optional
-
-        if (!print_only_first_solution || !first_solution_logged) {
-            log_message("Final Solution: " + formatted_solution);
-        }
-
-        if (!first_solution_logged) {
-            first_solution_logged = true;
-
-            // Count non-rotation moves
-            istringstream iss(formatted_solution);
-            int move_count = 0;
-            string token;
-            vector<string> rotation_prefixes = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-
-            while (iss >> token) {
-                if (find(rotation_prefixes.begin(), rotation_prefixes.end(), token) != rotation_prefixes.end()) {
-                    continue;
-                }
-                move_count++;
-            }
-
-            if (move_count >= MAX_MOVES) move_count = MAX_MOVES - 1;
-            move_histogram[move_count]++;
-        }
-
-        if (print_only_first_solution) {
-            break; // ✅ Stop after printing the first solution
-        }
-    }
-}
-
-void solve_scramble_less_logs(const string &scramble, const string &filename, bool print_only_first_solution = true) {
-    log_message("\n🔍 Solving scramble: " + scramble);
-
-    string solved_state = "aaaabbbbccccbbbbccccaaaa";
-    string scrambled_state = translate_scramble_to_moves(scramble);
-    log_message("\n🔄 Scrambled State: " + scrambled_state);
-
-    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
-    vector<tuple<string, string, string>> all_rotations_for_this_scramble;
-
-    for (const string &rotation : rotations) {
-        string rotated_state = apply_move(scrambled_state, rotation);
-        string fixed_rotated_state = fixLetterOrder(rotated_state);
-        all_rotations_for_this_scramble.push_back({rotation, rotated_state, fixed_rotated_state});
-    }
-
-    map<char, int> letter_counts = {{'a', 7}, {'b', 8}, {'c', 8}};
-    uint32_t min_flag = UINT32_MAX;
-    vector<tuple<string, vector<string>, vector<string>>> good_paths;
-
-    for (const auto &[rotation, state, fixed_state] : all_rotations_for_this_scramble) {
-        string canonical_state = fixed_state.substr(1);
-        __uint128_t index = multinomial_rank(canonical_state, letter_counts);
-
-        uint32_t flag = 0;
-        ifstream input_file(filename, ios::binary);
-        if (!input_file) {
-            log_message("❌ Error opening file: " + filename);
-            return;
-        }
-
-        streampos file_position = index * sizeof(uint32_t);
-        input_file.seekg(file_position, ios::beg);
-        input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
-        input_file.close();
-
-        uint32_t extracted_flag = flag & 0xF;
-
-        if (extracted_flag < min_flag) {
-            min_flag = extracted_flag;
-            good_paths.clear();
-        }
-        if (extracted_flag == min_flag) {
-            good_paths.push_back({canonical_state, {rotation}, {rotation}});
-        }
-    }
-
-    vector<vector<string>> successful_paths;
-    recursive_expand_less_logs(good_paths, filename, min_flag, letter_counts, 1, successful_paths);
 
     log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
     bool first_solution_logged = false;
@@ -1722,6 +1444,10 @@ void print_move_histogram() {
     }
 }
 
+
+
+
+
 void solve_scrambles(const string &scramble_list_file, const string &binary_filename) {
     ifstream infile(scramble_list_file);
     if (!infile) {
@@ -1764,7 +1490,7 @@ void solve_scrambles_less_logs(const string &scramble_list_file, const string &b
         log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
         log_message("=======================\n");
 
-        solve_scramble_less_logs(line, binary_filename);
+        solve_scramble(line, binary_filename);
     }
 
     infile.close();
@@ -1802,8 +1528,6 @@ void solve_scrambles_fast(const string &scramble_list_file, const string &binary
 
 
 
-
-
 // Main function
 int main() {
    auto start_time = high_resolution_clock::now();
@@ -1823,7 +1547,6 @@ int main() {
 
     // Uncomment this until "depth_7_updater" for updating the bin-file with the depths. You can also uncomment depth_8 if you PC is fast. This depth takes
     // about 40mins to run on my Macbook Air with M1-chip. Be aware that the code gets quite buggy when the scramble needs to apply moves to reach a depth where it 
-
 
     depth_0_updater(bin_filename);
     depth_updater(1, bin_filename, updated_states0, updated_states1, "updated_states_depth_1_april3.txt");
@@ -1860,9 +1583,6 @@ int main() {
     ///solve_scrambles_fast("scrambles.txt", bin_filename);
 
 
-
-
-
     // miscellaneous
 
     // Uncomment to test the multinomial_rank-hashing here. Please be aware that the input is a string for the cubestate where the first a is already taken away. So the input
@@ -1871,11 +1591,9 @@ int main() {
     //cout << uint128_to_string(multinomial_rank("aabbaaccbcbcccbaaccabbb", {{'a', 7}, {'b', 8}, {'c', 8}}));
 
 
-    // timer:
-    auto end_time = high_resolution_clock::now();
+    auto end_time = high_resolution_clock::now(); // code for timer
     auto duration = duration_cast<milliseconds>(end_time - start_time);
     log_message("Execution time: " + to_string(duration.count()) + " ms");
-
     log_file.close();
     return 0;
 }
