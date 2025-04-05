@@ -59,6 +59,7 @@ ofstream log_file("log.txt", ios::out); // Log file for all printed outputs
 const int MAX_MOVES = 20;
 int move_histogram[MAX_MOVES] = {0};
 int solution_counter = 0;  // Global counter to track the number of solutions found
+int dropout_counter = 0;
 
 // Global variable to store updated states
 unordered_set<string> updated_states0, updated_states1, updated_states2, updated_states3, updated_states4,updated_states5,
@@ -297,7 +298,7 @@ void depth_updater(
             string fixed_state = canonical.substr(1);  // remove leading 'a'
 
             // Optional: skip flagged/mirrored states here if re-enabled
-            // if (is_already_flagged_or_mirrored(canonical, filename, depth, letter_counts)) continue;
+            //if (is_already_flagged_or_mirrored(canonical, filename, depth, {{'a', 7}, {'b', 8}, {'c', 8}})) continue;
 
             current_depth_states.insert(fixed_state);
         }
@@ -436,17 +437,6 @@ string letter_swap(string combination, char from, char to) {
     return combination_new;
 }
 
-
-// Check if the combination starts with an allowed prefix
-bool startsWithAllowedPrefix(const string& combination) {
-    const string allowedPrefixes[] = {"ab", "aab", "aaab", "aaaab", "aaaaab", "aaaaaab", "aaaaaaab", "aaaaaaaab"};
-    for (const string& prefix : allowedPrefixes) {
-        if (combination.rfind(prefix, 0) == 0) return true;
-    }
-    return false;
-}
-
- 
 
 // Perform an "x-rotation" on the combination
 string x_rotation(const string& combination) {
@@ -669,11 +659,11 @@ string U(const string& combination) {
 }
 
 string U2(const string& combination) {
-    string combination_new = U(combination);  // First transformation
-    return U(combination_new);               // Apply F again and return
+    string combination_new = U(combination); 
+    return U(combination_new);               
 }
 
-string U3(const string& combination) { // Perform F3 (F applied three times)
+string U3(const string& combination) {
     return U(U2(combination));
 }
 
@@ -780,9 +770,7 @@ pair<string, string> get_canonical_rotation_with_rotation(const string &cubestat
 }
 
 
-
-
-bool recursive_expand(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
+bool recursive_expand_detailed(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
                       const string &filename, uint32_t current_flag, 
                       map<char, int> &letter_counts, int depth, 
                       vector<vector<string>> &successful_paths) {
@@ -840,10 +828,6 @@ const vector<string>& moves = MOVES;
             uint32_t extracted_flag = flag & 0xF;
             log_message("    │   📦 Flag from file: " + to_string(extracted_flag));
 
-            //if (current_flag <= 8 && extracted_flag >= current_flag) { // might go higher here
-            //    continue; // ✂️ Enforce strictly decreasing rule
-            //}
-
             if (extracted_flag < new_min_flag) {
                 log_message("    │   🆕 New minimum flag found: " + to_string(extracted_flag));
                 new_min_flag = extracted_flag;
@@ -891,102 +875,11 @@ const vector<string>& moves = MOVES;
     }
 
     log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
-    return recursive_expand(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths);
+    return recursive_expand_detailed(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths);
 }
 
 
-bool recursive_expand_less_logs(vector<tuple<string, vector<string>, vector<string>>> &parent_states, 
-                      const string &filename, uint32_t current_flag, 
-                      map<char, int> &letter_counts, int depth, 
-                      vector<vector<string>> &successful_paths) {
-    
-    if (current_flag == 0) {
-        log_message("\n🎯 Reached depth 0. ✅ Solution found!");
-        return true;
-    }
-
-
-    uint32_t new_min_flag = UINT32_MAX;
-    vector<tuple<string, vector<string>, vector<string>>> good_paths_next;
-
-    int parent_count = 0;
-    for (const auto &[parent_state, history, rotation_history] : parent_states) {
-        ++parent_count;
-        int move_index = 0;
-        for (const string &move : MOVES) {
-            ++move_index;
-
-            string new_state = "a" + parent_state;
-            new_state = apply_move(new_state, move);
-
-            auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
-            string fixed_state = canonical_state.substr(1);
-            __uint128_t index = multinomial_rank(fixed_state, letter_counts);
-
-            uint32_t flag = 0;
-            ifstream input_file(filename, ios::binary);
-            if (!input_file) {
-                log_message("❌ Error opening file: " + filename);
-                return false;
-            }
-
-            streampos file_position = index * sizeof(uint32_t);
-            input_file.seekg(file_position, ios::beg);
-            input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
-            input_file.close();
-
-            uint32_t extracted_flag = flag & 0xF;
-
-            if (extracted_flag < new_min_flag) {
-                new_min_flag = extracted_flag;
-                good_paths_next.clear();
-            }
-
-            if (extracted_flag == new_min_flag) {
-
-                vector<string> new_history = history;
-                new_history.push_back(move);
-
-                vector<string> new_rotation_history = rotation_history;
-                new_rotation_history.push_back(applied_rotation);
-
-                good_paths_next.push_back({fixed_state, new_history, new_rotation_history});
-            }
-
-            if (extracted_flag == 0) {
-                log_message("    🎉 FOUND GOAL STATE! Building solution path...");
-
-                vector<string> new_history = history;
-                new_history.push_back(move);
-
-                vector<string> new_rotation_history = rotation_history;
-                new_rotation_history.push_back(applied_rotation);
-
-                vector<string> solution_path;
-                for (size_t i = 0; i < new_history.size(); ++i) {
-                    solution_path.push_back(new_history[i] + " → " + new_rotation_history[i]);
-                }
-
-                successful_paths.push_back(solution_path);
-
-                string final_solution;
-                for (size_t i = 0; i < new_history.size(); ++i) {
-                    final_solution += new_rotation_history[i] + " " + new_history[i] + " ";
-                }
-                final_solution.pop_back();
-                final_solution += " (depth=" + to_string(new_history.size()) + ")";
-
-                log_message("    ✅ Final Solution: " + final_solution);
-            }
-        }
-    }
-
-    log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
-    return recursive_expand_less_logs(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths);
-}
-
-// Main function to solve a scramble using precomputed binary flags
-void solve_scramble(const string &scramble, const string &filename, bool print_only_first_solution = true) {
+void solve_scramble_detailed(const string &scramble, const string &filename, bool print_only_first_solution = true) {
     log_message("\n🔍 Solving scramble: " + scramble);
 
     string solved_state = "aaaabbbbccccbbbbccccaaaa";
@@ -1034,7 +927,7 @@ void solve_scramble(const string &scramble, const string &filename, bool print_o
     }
 
     vector<vector<string>> successful_paths;
-    recursive_expand(good_paths, filename, min_flag, letter_counts, 1, successful_paths);
+    recursive_expand_detailed(good_paths, filename, min_flag, letter_counts, 1, successful_paths);
 
     log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
     bool first_solution_logged = false;
@@ -1120,7 +1013,7 @@ bool recursive_expand_fast(
             auto [canonical_state, applied_rotation] = get_canonical_rotation_with_rotation(new_state);
             string fixed_state = canonical_state.substr(1);
 
-            if (visited_states.count(fixed_state)) continue;
+            if (visited_states.count(fixed_state)) continue; // what makes the "fast"-version different from full-branch version
             visited_states.insert(fixed_state);
 
             __uint128_t index = multinomial_rank(fixed_state, letter_counts);
@@ -1170,10 +1063,10 @@ bool recursive_expand_fast(
         }
     }
 
-    log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
+    //log_message("\n🔁 Recursing to next depth with min flag: " + to_string(new_min_flag));
 
     if (good_paths_next.empty()) {
-        log_message("⛔ No valid path forward (strict depth rule). Scramble will be skipped.");
+        log_message("⛔ No valid path forward (strict depth rule). Scramble will be skipped.");        
         return false;
     }
 
@@ -1185,13 +1078,15 @@ bool recursive_expand_fast(
     return recursive_expand_fast(good_paths_next, filename, new_min_flag, letter_counts, depth + 1, successful_paths, only_first_solution, visited_states);
 }
 
+
 void solve_scramble_fast(const string &scramble, const string &filename, bool print_only_first_solution = true) {
+
     log_message("\n🔍 Solving scramble: " + scramble);
 
-    string solved_state = "aaaabbbbccccbbbbccccaaaa";
     string scrambled_state = translate_scramble_to_moves(scramble);
     log_message("\n🔄 Scrambled State: " + scrambled_state);
 
+    
     vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
     vector<tuple<string, string, string>> all_rotations_for_this_scramble;
 
@@ -1248,6 +1143,8 @@ void solve_scramble_fast(const string &scramble, const string &filename, bool pr
     }
 
     log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
+
+    // All of the following is just for logging:
     bool first_solution_logged = false;
 
     for (const auto &path : successful_paths) {
@@ -1313,10 +1210,7 @@ void print_move_histogram() {
 }
 
 
-
-
-
-void solve_scrambles(const string &scramble_list_file, const string &binary_filename) {
+void solve_scrambles_detailed(const string &scramble_list_file, const string &binary_filename) {
     ifstream infile(scramble_list_file);
     if (!infile) {
         cerr << "❌ Error opening scramble list file: " << scramble_list_file << endl;
@@ -1331,41 +1225,13 @@ void solve_scrambles(const string &scramble_list_file, const string &binary_file
 
         scramble_count++;
         log_message("\n\n==========🧩 Solving scramble #" + to_string(scramble_count) + ": " + line + "==========\n");
-        solve_scramble(line, binary_filename);
+        solve_scramble_detailed(line, binary_filename);
     }
-
     infile.close();
-
     log_message("\n✅ Finished solving " + to_string(scramble_count) + " scrambles.");
     print_move_histogram();
 }
 
-void solve_scrambles_less_logs(const string &scramble_list_file, const string &binary_filename) {
-    ifstream infile(scramble_list_file);
-    if (!infile) {
-        cerr << "❌ Error opening scramble list file: " << scramble_list_file << endl;
-        return;
-    }
-
-    string line;
-    int scramble_count = 0;
-
-    while (getline(infile, line)) {
-        if (line.empty()) continue;  // Skip blank lines
-
-        scramble_count++;
-        log_message("\n\n=======================");
-        log_message("🧩 Solving scramble #" + to_string(scramble_count) + ": " + line);
-        log_message("=======================\n");
-
-        solve_scramble(line, binary_filename);
-    }
-
-    infile.close();
-
-    log_message("\n✅ Finished solving " + to_string(scramble_count) + " scrambles.");
-    print_move_histogram();
-}
 
 void solve_scrambles_fast(const string &scramble_list_file, const string &binary_filename) {
     ifstream infile(scramble_list_file);
@@ -1394,66 +1260,34 @@ void solve_scrambles_fast(const string &scramble_list_file, const string &binary
 }
 
 
-
-
 // Main function
 int main() {
    auto start_time = high_resolution_clock::now();
    precompute_factorials();
 
-    string bin_filename = "2100mio_april2.bin";
+    string bin_filename = "2100mio_d9.bin";
     // 1)
-
-    binary_generator(0, 2100000000, "2100mio_april2.bin"); 
-    binary_viewer(bin_filename, 1000);
-
-
-    // 2)
 
     // Uncomment this until "depth_7_updater" for updating the bin-file with the depths. You can also uncomment depth_8 if you PC is fast. This depth takes
     // about 40mins to run on my Macbook Air with M1-chip. Be aware that the code gets quite buggy when the scramble needs to apply moves to reach a depth where it 
 
-    depth_0_updater(bin_filename);
-    depth_updater(1, bin_filename, updated_states0, updated_states1, "updated_states_depth_1_april3.txt");
-    depth_updater(2, bin_filename, updated_states1, updated_states2, "updated_states_depth_2_april3.txt");
-    depth_updater(3, bin_filename, updated_states2, updated_states3, "updated_states_depth_3_april3.txt");
-    depth_updater(4, bin_filename, updated_states3, updated_states4, "updated_states_depth_4_april3.txt");
-    depth_updater(5, bin_filename, updated_states4, updated_states5, "updated_states_depth_5_april3.txt");
-    depth_updater(6, bin_filename, updated_states5, updated_states6, "updated_states_depth_6_april3.txt");
-    //depth_updater(7, bin_filename, updated_states6, updated_states7, "updated_states_depth_7_april3.txt");
-    //depth_updater(8, bin_filename, updated_states7, updated_states8, "updated_states_depth_8_april3.txt");
+    //binary_generator(0, 2100000000, "2100mio_d9.bin"); 
+    //binary_viewer(bin_filename, 1000);
+    //depth_0_updater(bin_filename);
+    //depth_updater(1, bin_filename, updated_states0, updated_states1, "updated_states_depth_1_file_not_necessary.txt");
+    //depth_updater(2, bin_filename, updated_states1, updated_states2, "updated_states_depth_2_file_not_necessary.txt");
+    //depth_updater(3, bin_filename, updated_states2, updated_states3, "updated_states_depth_3_file_not_necessary.txt");
+    //depth_updater(4, bin_filename, updated_states3, updated_states4, "updated_states_depth_4_file_not_necessary.txt");
+    //depth_updater(5, bin_filename, updated_states4, updated_states5, "updated_states_depth_5_file_not_necessary.txt");
+    //depth_updater(6, bin_filename, updated_states5, updated_states6, "updated_states_depth_6_file_not_necessary.txt");
+    //depth_updater(7, bin_filename, updated_states6, updated_states7, "updated_states_depth_7_file_not_necessary.txt");
+    //depth_updater(8, bin_filename, updated_states7, updated_states8, "updated_states_depth_8_file_not_necessary.txt");
     //....
-
-
-    // IMPORTANT: Comment out part 1) and 2) after you have generated and updated the lookup table. Reason is obvious
-
-
-
-    // 3) here you can try out the 4 variants of the solver:
-
-    // Fast version (only explores one optimal branch) speed: 0.7sec
-    //solve_scramble_fast("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
-    //solve_scramble_fast("U B L B2 R2 F2 D2 L U2 F2 R' F2 L U R2 F B L2 B' U' D' Fw2 Uw2 R' F2 U Fw2 U' D R' Uw2 F2 B2 R2 Fw D Uw2 R' F2 B' Fw' Rw' F' U2 Rw U2 ", bin_filename, 0);
-
-    // Full-exploration version (slower but returns every path) speed: 16sec (a big chunk of that is due to documenting the entire branching-process in the log.txt)
-    //solve_scramble("B' Fw Rw' R' B2 Rw' D R2 Uw' L2 Fw R' Fw2 U' L2 U2 Uw2 Rw L F2 D2 Fw U' Uw' F Rw2 Fw2 Uw R2 U Uw2 B2 Rw' Uw' R2 Rw2 Uw Fw2 B' U'", bin_filename, 0);
-    //solve_scramble("U B L B2 R2 F2 D2 L U2 F2 R' F2 L U R2 F B L2 B' U' D' Fw2 Uw2 R' F2 U Fw2 U' D R' Uw2 F2 B2 R2 Fw D Uw2 R' F2 B' Fw' Rw' F' U2 Rw U2", bin_filename, 0);
-
-    // Uncomment to try out Batchsolver (fast)
-    //solve_scrambles_less_logs("scrambles_dropout.txt", bin_filename);
     
-    // Uncomment to try out Batchsolver (full-branch)
-    // I really do not recommend running this with many scrambles (like in the scramble.txt currently) due to the huge size that log.txt will have
-    
-    ///solve_scrambles_fast("scrambles.txt", bin_filename);
+    // IMPORTANT: Comment part 1) after you have generated and updated the lookup table.
 
-
-    // miscellaneous
-
-    // Uncomment to test the multinomial_rank-hashing here. Please be aware that the input is a string for the cubestate where the first a is already taken away. So the input
-    // must have been adjusted with fixLetterOrder(.)
-    
-    //cout << uint128_to_string(multinomial_rank("aabbaaccbcbcccbaaccabbb", {{'a', 7}, {'b', 8}, {'c', 8}}));
+    // 2) here you can try out the main-solver
+    solve_scrambles_fast("scrambles.txt", bin_filename);
 
 
     auto end_time = high_resolution_clock::now(); // code for timer
@@ -1462,4 +1296,3 @@ int main() {
     log_file.close();
     return 0;
 }
-
