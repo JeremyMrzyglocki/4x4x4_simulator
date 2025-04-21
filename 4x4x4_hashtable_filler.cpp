@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <numeric>
 #include <unordered_map>
+#include <random>
+
 
 using namespace std;
 using namespace std::chrono; 
@@ -1259,6 +1261,147 @@ void solve_scrambles_fast(const string &scramble_list_file, const string &binary
     print_move_histogram();
 }
 
+// Function to generate random state strings of 8x a/b/c
+void random_state_string_generator(const string& output_filename, int count = 1) {
+    ofstream outfile(output_filename);
+    if (!outfile) {
+        cerr << "❌ Error opening output file: " << output_filename << endl;
+        return;
+    }
+
+    string base = "aaaaaaaabbbbbbbbcccccccc";
+    random_device rd;
+    mt19937 gen(rd());
+
+    for (int i = 0; i < count; ++i) {
+        string shuffled = base;
+        shuffle(shuffled.begin(), shuffled.end(), gen);
+        outfile << shuffled << "\n";
+    }
+
+    outfile.close();
+    cout << "✅ " << count << " random states written to " << output_filename << endl;
+}
+
+
+
+
+void solve_state_string_fast(const string &state_string, const string &filename, bool print_only_first_solution = true) {
+    log_message("\n🔍 Solving raw state string: " + state_string);
+
+    // Prepend 'a' and begin rotations
+    string scrambled_state = "a" + state_string;
+    vector<string> rotations = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+    vector<tuple<string, string, string>> all_rotations_for_this_state;
+
+    for (const string &rotation : rotations) {
+        string rotated_state = apply_move(scrambled_state, rotation);
+        string fixed_rotated_state = fixLetterOrder(rotated_state);
+        all_rotations_for_this_state.push_back({rotation, rotated_state, fixed_rotated_state});
+    }
+
+    map<char, int> letter_counts = {{'a', 8}, {'b', 8}, {'c', 8}};
+    uint32_t min_flag = UINT32_MAX;
+    vector<tuple<string, vector<string>, vector<string>>> good_paths;
+
+    for (const auto &[rotation, state, fixed_state] : all_rotations_for_this_state) {
+        string canonical_state = fixed_state.substr(1);
+        __uint128_t index = multinomial_rank(canonical_state, letter_counts);
+
+        uint32_t flag = 0;
+        ifstream input_file(filename, ios::binary);
+        if (!input_file) {
+            log_message("❌ Error opening file: " + filename);
+            return;
+        }
+
+        streampos file_position = index * sizeof(uint32_t);
+        input_file.seekg(file_position, ios::beg);
+        input_file.read(reinterpret_cast<char*>(&flag), sizeof(uint32_t));
+        input_file.close();
+
+        uint32_t extracted_flag = flag & 0xF;
+
+        if (extracted_flag < min_flag) {
+            min_flag = extracted_flag;
+            good_paths.clear();
+        }
+        if (extracted_flag == min_flag) {
+            good_paths.push_back({canonical_state, {rotation}, {rotation}});
+        }
+    }
+
+    vector<vector<string>> successful_paths;
+    unordered_set<string> visited_states;
+        
+if (min_flag == 0) {
+    log_message("\n🎯 Reached depth 0. ✅ Already solved!");
+
+    for (const auto &[canonical_state, history, rotation_history] : good_paths) {
+        vector<string> solution_path;
+        for (size_t i = 0; i < history.size(); ++i) {
+            solution_path.push_back(history[i] + " → " + rotation_history[i]);
+        }
+        successful_paths.push_back(solution_path);
+    }
+}
+else {
+    bool success = recursive_expand_fast(good_paths, filename, min_flag, letter_counts, 1, successful_paths, print_only_first_solution, visited_states);
+}
+
+    log_message("\n🏆 SUCCESSFUL SOLUTIONS:");
+    bool first_solution_logged = false;
+
+    for (const auto &path : successful_paths) {
+        string formatted_solution = "";
+        bool is_first_entry = true;
+        string initial_rotation = path[0].substr(0, 2);
+        formatted_solution = initial_rotation;
+
+        for (const auto &step : path) {
+            size_t arrow_pos = step.find(" → ");
+            if (arrow_pos != string::npos) {
+                string move = step.substr(0, arrow_pos);
+                string rotation = step.substr(arrow_pos + 4);
+                if (is_first_entry) {
+                    is_first_entry = false;
+                } else {
+                    formatted_solution += move + " " + rotation + " ";
+                }
+            }
+        }
+
+        if (!formatted_solution.empty()) {
+            formatted_solution.pop_back();
+        }
+
+        if (!print_only_first_solution || !first_solution_logged) {
+            log_message("Final Solution: " + formatted_solution);
+        }
+
+        if (!first_solution_logged) {
+            first_solution_logged = true;
+
+            // Count non-rotation moves
+            istringstream iss(formatted_solution);
+            int move_count = 0;
+            string token;
+            vector<string> rotation_prefixes = {"x", "x2", "x'", "y", "y2", "y'", "z", "z2", "z'"};
+
+            while (iss >> token) {
+                if (find(rotation_prefixes.begin(), rotation_prefixes.end(), token) != rotation_prefixes.end()) continue;
+                move_count++;
+            }
+
+            if (move_count >= MAX_MOVES) move_count = MAX_MOVES - 1;
+            move_histogram[move_count]++;
+            log_message("✅ Move Count (no rotations): " + to_string(move_count));
+        }
+
+        if (print_only_first_solution) break;
+    }
+}
+
 
 // Main function
 int main() {
@@ -1287,7 +1430,16 @@ int main() {
     // IMPORTANT: Comment part 1) after you have generated and updated the lookup table.
 
     // 2) here you can try out the main-solver
-    solve_scrambles_fast("scrambles.txt", bin_filename);
+    //solve_scrambles_fast("scrambles.txt", bin_filename);
+
+    random_state_string_generator("random_states.txt", 5);
+
+    ifstream infile("random_states.txt");
+    string state;
+    while (getline(infile, state)) {
+        solve_state_string_fast(state, "2100mio_d9.bin");
+    }
+
 
 
     auto end_time = high_resolution_clock::now(); // code for timer
