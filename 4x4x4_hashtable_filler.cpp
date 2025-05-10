@@ -1430,15 +1430,15 @@ int main() {
     // IMPORTANT: Comment part 1) after you have generated and updated the lookup table.
 
     // 2) here you can try out the main-solver
-    //solve_scrambles_fast("scrambles.txt", bin_filename);
+    solve_scramble_fast("L2 B2 D2 R U2 R L2 F2 U2 B2 U2 D L2 F D R2 L U' F D2 L' Uw2 F Rw2 Uw2 R B Uw2 L Uw2 F Fw2 R2 Uw B L' Uw' R U' L' D' Fw' L2 Fw' Rw' B2", bin_filename);
 
-    random_state_string_generator("random_states.txt", 5);
+    //random_state_string_generator("random_states.txt", 5);
 
-    ifstream infile("random_states.txt");
-    string state;
-    while (getline(infile, state)) {
-        solve_state_string_fast(state, "2100mio_d9.bin");
-    }
+    //ifstream infile("random_states.txt");
+    //string state;
+    //while (getline(infile, state)) {
+    //    solve_state_string_fast(state, "2100mio_d9.bin");
+    //}
 
 
 
