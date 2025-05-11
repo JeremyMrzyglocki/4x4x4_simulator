@@ -124,40 +124,6 @@ string uint128_to_string(__uint128_t value) {
     return result.empty() ? "0" : result;
 }
 
-// not using this function anymore, as it only eliminates 10% (as a factor, not base of exponential function) of cases while adding 4x as much time in generation
-bool is_already_flagged_or_mirrored(const string &canonical_state, const string &filename, int depth, const map<char, int> &letter_counts) {
-
-    vector<string> all_mirrors = {
-        canonical_state,
-        fixLetterOrder(m_mirror(canonical_state)),
-        fixLetterOrder(s_mirror(canonical_state)),
-        fixLetterOrder(e_mirror(canonical_state))
-    };
-
-    for (const string &variant : all_mirrors) {
-        string without_a = variant.substr(1);
-        __uint128_t index = multinomial_rank(without_a, letter_counts);
-
-        ifstream input_file(filename, ios::binary);
-        if (!input_file) {
-            cerr << "Error opening file: " << filename << endl;
-            return false;
-        }
-
-        streampos file_position = index * sizeof(uint32_t);
-        input_file.seekg(file_position, ios::beg);
-        uint32_t packed_value;
-        input_file.read(reinterpret_cast<char*>(&packed_value), sizeof(uint32_t));
-        input_file.close();
-
-        uint32_t flag = packed_value & 0xF;  // Get the lower 4 bits (flag)
-        if (flag <= depth) {
-            return true;  // One of the mirrored states is already flagged with equal or lower depth
-        }
-    }
-    return false;
-}
-
 // this function is needed because the two editors / VSC-extensions for opening .bin-files that I had tried, were not good. So I inserted a "reader"-function.
 void binary_viewer(const string &filename, int num_entries) {
     ifstream input_file(filename, ios::binary);
@@ -298,9 +264,6 @@ void depth_updater(
             string moved = apply_move(state, move);
             string canonical = get_canonical_rotation(moved);
             string fixed_state = canonical.substr(1);  // remove leading 'a'
-
-            // Optional: skip flagged/mirrored states here if re-enabled
-            //if (is_already_flagged_or_mirrored(canonical, filename, depth, {{'a', 7}, {'b', 8}, {'c', 8}})) continue;
 
             current_depth_states.insert(fixed_state);
         }
