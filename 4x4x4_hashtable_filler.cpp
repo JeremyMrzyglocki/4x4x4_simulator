@@ -11,6 +11,8 @@
 #include <numeric>
 #include <unordered_map>
 #include <random>
+#include <iomanip> 
+
 
 
 using namespace std;
@@ -45,6 +47,22 @@ string z_rotation(const string&);
 string z2_rotation(const string&);
 string z3_rotation(const string&);
 
+string x_y_rotation(const string&);
+string x_y2_rotation(const string&);
+string x_y3_rotation(const string&);
+string x3_y_rotation(const string&);
+string x3_y2_rotation(const string&);
+string x3_y3_rotation(const string&);
+string y_x_rotation(const string&);
+string y_x2_rotation(const string&);
+string y_x3_rotation(const string&);
+string y3_x_rotation(const string&);
+string y3_x2_rotation(const string&);
+string y3_x3_rotation(const string&);
+string z_y2_rotation(const string&);
+string y2_z_rotation(const string&);
+
+
 // Mirror functions
 string m_mirror(const string&);
 string s_mirror(const string&);
@@ -73,6 +91,23 @@ const vector<string> MOVES = {
     "Fw", "Fw2", "Fw'", "Bw", "Bw2", "Bw'", "Uw", "Uw2", "Uw'", "Dw", "Dw2", "Dw'"
 };
 
+const vector<string> MOVES_reduced = {
+    "R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'",
+    "U", "U2", "U'", "D", "D2", "D'", "Rw", "Rw2", "Rw'",
+    "Fw", "Fw2", "Fw'", "Uw", "Uw2", "Uw'",
+};
+
+const vector<string> CUBE_ORIENTATIONS = {
+    "", // identity (no rotation)
+    "x", "x2", "x'",
+    "y", "y2", "y'",
+    "z", "z2", "z'",
+    "x y", "x y2", "x y'",
+    "x' y", "x' y2", "x' y'",
+    "y x", "y x2", "y x'",
+    "y' x", "y' x2", "y' x'",
+    "z y2", "y2 z"
+};
 
 // Precompute factorials for fast lookup (128-bit)
 vector<__uint128_t> factorial_cache(25, 1);
@@ -359,6 +394,21 @@ string apply_move(const string& state, const string& move) {
     if (move == "z") return z_rotation(state);
     if (move == "z2") return z2_rotation(state);
     if (move == "z'") return z3_rotation(state);
+    if (move == "x y") return x_y_rotation(state);
+    if (move == "x y2") return x_y2_rotation(state);
+    if (move == "x y'") return x_y3_rotation(state);
+    if (move == "x' y") return x3_y_rotation(state);
+    if (move == "x' y2") return x3_y2_rotation(state);
+    if (move == "x' y'") return x3_y3_rotation(state);
+    if (move == "y x") return y_x_rotation(state);
+    if (move == "y x2") return y_x2_rotation(state);
+    if (move == "y x'") return y_x3_rotation(state);
+    if (move == "y' x") return y3_x_rotation(state);
+    if (move == "y' x2") return y3_x2_rotation(state);
+    if (move == "y' x'") return y3_x3_rotation(state);
+    if (move == "z y2") return z_y2_rotation(state);
+    if (move == "y2 z") return y2_z_rotation(state);
+    
     return state;  // Return unchanged state if move is not recognized
 }
 
@@ -447,6 +497,22 @@ string z_rotation(const string& combination) {
 }
 string z2_rotation(const string& combination) {string combination_new = z_rotation(combination);return z_rotation(combination_new);}
 string z3_rotation(const string& combination) {return z_rotation(z2_rotation(combination));}
+
+
+string x_y_rotation(const string& combination) { return y_rotation(x_rotation(combination));}
+string x_y2_rotation(const string& combination) { return y2_rotation(x_rotation(combination));}
+string x_y3_rotation(const string& combination) { return y3_rotation(x_rotation(combination));}
+string x3_y_rotation(const string& combination) { return y_rotation(x3_rotation(combination));}
+string x3_y2_rotation(const string& combination) { return y2_rotation(x3_rotation(combination));}
+string x3_y3_rotation(const string& combination) { return y3_rotation(x3_rotation(combination));}
+string y_x_rotation(const string& combination) { return x_rotation(y_rotation(combination));}
+string y_x2_rotation(const string& combination) { return x2_rotation(y_rotation(combination));}
+string y_x3_rotation(const string& combination) { return x3_rotation(y_rotation(combination));}
+string y3_x_rotation(const string& combination) { return x_rotation(y3_rotation(combination));}
+string y3_x2_rotation(const string& combination) { return x2_rotation(y3_rotation(combination));}
+string y3_x3_rotation(const string& combination) { return x3_rotation(y3_rotation(combination));}
+string z_y2_rotation(const string& combination) {return y2_rotation(z_rotation(combination));}
+string y2_z_rotation(const string& combination) { return z_rotation(y2_rotation(combination));}
 
 // I did introduce mirrors here, but they are only used in my version 1 solver. Here, I made some experiments and while adding them reduces the states in each depth
 // by 10% (not scaling exponentially sadly), it is also 4x-ing the amount of time needed to update the lookup-table. I will not use mirror-symetry as of right now.
@@ -1247,8 +1313,6 @@ void random_state_string_generator(const string& output_filename, int count = 1)
 }
 
 
-
-
 void solve_state_string_fast(const string &state_string, const string &filename, bool print_only_first_solution = true) {
     log_message("\n🔍 Solving raw state string: " + state_string);
 
@@ -1366,6 +1430,174 @@ else {
 }
 
 
+
+
+
+void explorer() {
+    const int MAX_DEPTH = 10;
+    vector<vector<string>> depths(MAX_DEPTH + 1);
+    vector<unordered_set<string>> depth_sets(MAX_DEPTH + 1);
+
+    string initial_state = "aaaabbbbccccbbbbccccaaaa";
+    depths[0].push_back(initial_state);
+    depth_sets[0].insert(initial_state);
+
+    for (int d = 0; d < MAX_DEPTH; ++d) {
+        //log_message("\n\nApplying all possible moves to the depth " + to_string(d) + " states:");
+        for (const string& state : depths[d]) {
+            //log_message("  ⬇ Applying moves to depth-" + to_string(d) + " state: " + state);
+
+            for (const string& move : MOVES_reduced) {
+                string new_state = apply_move(state, move);
+
+                vector<string> rotated_states;
+                rotated_states.push_back(fixLetterOrder(new_state)); // include case of no rotation
+
+                for (const string& rotation : CUBE_ORIENTATIONS) {
+                    string rotated_state = fixLetterOrder(apply_move(new_state, rotation));
+                    rotated_states.push_back(rotated_state);
+                }
+                string canonical_state = *min_element(rotated_states.begin(), rotated_states.end());
+
+                bool seen = false;
+                for (int prev_d = 0; prev_d <= d + 1 && prev_d <= MAX_DEPTH; ++prev_d) {
+                    if (depth_sets[prev_d].find(canonical_state) != depth_sets[prev_d].end()) {
+                        seen = true;
+                        break;
+                    }
+                }
+                if (!seen && d + 1 <= MAX_DEPTH) {
+                    depth_sets[d + 1].insert(canonical_state);
+                    depths[d + 1].push_back(canonical_state);
+                }
+
+                stringstream output_line;
+                //output_line << "    ├─ Move: " << std::setw(4) << std::left << move << " => State: " << new_state << " | Canonical: " << canonical_state;
+                //log_message(output_line.str());
+            }
+        }
+    }
+        // 📝 Write each depth to a separate file
+        for (int d = 0; d <= MAX_DEPTH; ++d) {
+            string filename = "depth_" + to_string(d) + ".txt";
+            ofstream outfile(filename);
+            for (const auto& state : depths[d]) {
+                outfile << state << '\n';
+            }
+            outfile.close();
+            log_message("📁 Saved " + to_string(depths[d].size()) + " states to " + filename);
+        }
+    
+
+    log_message("\n==================== STATE COUNTS ====================");
+    for (int d = 0; d <= MAX_DEPTH; ++d) {
+        log_message("Depth " + to_string(d) + ": " + to_string(depths[d].size()) + " states");
+    }
+}
+
+
+pair<string, string> get_canonical_form_with_rotation(const string& state) {
+    string canonical = fixLetterOrder(state);
+    string best_rotation = "";  // empty means identity (no rotation)
+
+    for (const string& rotation : CUBE_ORIENTATIONS) {
+        string rotated_state = apply_move(state, rotation);
+        string fixed = fixLetterOrder(rotated_state);
+
+        if (fixed < canonical) {
+            canonical = fixed;
+            best_rotation = rotation;
+        }
+    }
+
+    return {canonical, best_rotation};
+}
+
+
+void generate_next_depth_from_file( // for the case that you have a file with states and want to generate the next depth
+    const string& previous_depth_file,
+    const string& current_depth_file,
+    const string& next_depth_file
+) {
+    unordered_set<string> known_states;
+    vector<string> current_states;
+
+    // Load previous depth states
+    ifstream infile_prev(previous_depth_file);
+    if (!infile_prev) {
+        log_message("❌ Failed to open " + previous_depth_file);
+        return;
+    }
+    string line;
+    while (getline(infile_prev, line)) {
+        known_states.insert(line);
+    }
+    infile_prev.close();
+
+    // Load current depth states
+    ifstream infile_current(current_depth_file);
+    if (!infile_current) {
+        log_message("❌ Failed to open " + current_depth_file);
+        return;
+    }
+    while (getline(infile_current, line)) {
+        current_states.push_back(line);
+        known_states.insert(line); // also avoid revisiting current states
+    }
+    infile_current.close();
+
+    unordered_set<string> next_depth_set;
+    vector<string> next_depth_states;
+
+    int processed_count = 0;
+    for (const string& state : current_states) {
+        ++processed_count;
+        if (processed_count % 10000 == 0) {
+            log_message("⏳ Processed " + to_string(processed_count) + " / " + to_string(current_states.size()) + " states...");
+        }
+    
+        
+        for (const string& move : MOVES_reduced) {
+            string new_state = apply_move(state, move);
+
+            vector<string> rotated_states;
+            rotated_states.push_back(fixLetterOrder(new_state)); // no rotation
+
+            for (const string& rotation : CUBE_ORIENTATIONS) {
+                string rotated_state = fixLetterOrder(apply_move(new_state, rotation));
+                rotated_states.push_back(rotated_state);
+            }
+
+            string canonical_state = *min_element(rotated_states.begin(), rotated_states.end());
+
+            if (known_states.find(canonical_state) == known_states.end()) {
+                known_states.insert(canonical_state); // track to avoid duplicates
+                next_depth_set.insert(canonical_state);
+                next_depth_states.push_back(canonical_state);
+            }
+        }
+    }
+    log_message("✅ Processed " + to_string(processed_count) + " states from " + current_depth_file);
+
+
+    ofstream outfile(next_depth_file);
+    if (!outfile) {
+        log_message("❌ Failed to open " + next_depth_file);
+        return;
+    }
+    for (const auto& state : next_depth_states) {
+        outfile << state << '\n';
+    }
+    outfile.close();
+
+    log_message("📁 Saved " + to_string(next_depth_states.size()) + " states to " + next_depth_file);
+}
+
+
+
+
+
+
 // Main function
 int main() {
    auto start_time = high_resolution_clock::now();
@@ -1393,7 +1625,8 @@ int main() {
     // IMPORTANT: Comment part 1) after you have generated and updated the lookup table.
 
     // 2) here you can try out the main-solver
-    solve_scramble_fast("L2 B2 D2 R U2 R L2 F2 U2 B2 U2 D L2 F D R2 L U' F D2 L' Uw2 F Rw2 Uw2 R B Uw2 L Uw2 F Fw2 R2 Uw B L' Uw' R U' L' D' Fw' L2 Fw' Rw' B2", bin_filename);
+    ///solve_scramble_fast("L2 B2 D2 R U2 R L2 F2 U2 B2 U2 D L2 F D R2 L U' F D2 L' Uw2 F Rw2 Uw2 R B Uw2 L Uw2 F Fw2 R2 Uw B L' Uw' R U' L' D' Fw' L2 Fw' Rw' B2", bin_filename);
+
 
     //random_state_string_generator("random_states.txt", 5);
 
@@ -1403,6 +1636,11 @@ int main() {
     //    solve_state_string_fast(state, "2100mio_d9.bin");
     //}
 
+
+
+
+    //explorer();
+    //generate_next_depth_from_file("depth_10.txt", "depth_11.txt", "depth_12.txt");
 
 
     auto end_time = high_resolution_clock::now(); // code for timer
